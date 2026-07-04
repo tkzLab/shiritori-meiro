@@ -296,16 +296,16 @@ const MAZES = [
     ],
     solution:[0,4,5,6,3,10],
   },
-  { // もんだい2  いるか→かがみ→みるく→くつした→たこ→こあら
+  { // もんだい2  いるか→かがみ→みるく→くつした→たこ→こあら（左下まわりルート）
     labels:[
-      {img:'iruka',     word:'いるか'},   {img:'kasa',     word:'かさ'},   // 1 わな(か)
-      {img:'sai',       word:'さい'},     {img:'tako',     word:'たこ'},   // 2 わな(さ)
-      {img:'kagami',    word:'かがみ'},   {img:'milk',     word:'みるく'},
-      {img:'kutsushita',word:'くつした'}, {img:'zou',      word:'ぞう'},   // 7 ダミー
-      {img:'sushi',     word:'すし'},     {img:'kuma',     word:'くま'},   // 9 わな(く)
-      {img:'koala',     word:'こあら'},
+      {img:'iruka',     word:'いるか'},   {img:'kasa',     word:'かさ'},   // 0 / 1 わな(か)
+      {img:'sai',       word:'さい'},     {img:'zou',      word:'ぞう'},   // 2 / 3 ダミー
+      {img:'kagami',    word:'かがみ'},   {img:'koma',     word:'こま'},   // 4 / 5 わな(こ)
+      {img:'sushi',     word:'すし'},     {img:'milk',     word:'みるく'}, // 6 ダミー / 7
+      {img:'kutsushita',word:'くつした'}, {img:'tako',     word:'たこ'},   // 8 / 9
+      {img:'koala',     word:'こあら'},                                    // 10
     ],
-    solution:[0,4,5,6,3,10],
+    solution:[0,4,7,8,9,10],
   },
   { // もんだい3  とけい→いるか→かさ→さい→いのしし
     labels:[
