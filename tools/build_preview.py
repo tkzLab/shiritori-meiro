@@ -5,10 +5,13 @@
 
 使い方:
   python3 tools/generate_mazes.py --out tmp/mazes_available.json
-  python3 tools/build_preview.py tmp/mazes_available.json
+  python3 tools/build_preview.py tmp/mazes_available.json            # → tmp/preview.html（ローカル用）
+  python3 tools/build_preview.py tmp/mazes_available.json --publish  # → preview.html（公開用・要コミット）
   python3 -m http.server 8642   # → http://localhost:8642/tmp/preview.html
 
 プレビューには左下に迷路ジャンプ用の <select> が付く（?m=番号 でも指定可）。
+--publish はリポジトリ直下に出力する（GitHub Pages で /preview.html として公開する用。
+相対パスがそのまま通るので <base> は入れない）。
 MAZES の置換ロジックは将来の本番埋め込みでもそのまま使える。
 """
 import json
@@ -63,22 +66,26 @@ def preview_bar(mazes):
 
 
 def main():
-    src = sys.argv[1] if len(sys.argv) > 1 else 'tmp/mazes_available.json'
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    publish = '--publish' in sys.argv[1:]
+    src = args[0] if args else 'tmp/mazes_available.json'
     data = json.load(open(os.path.join(ROOT, src) if not os.path.isabs(src) else src,
                           encoding='utf-8'))
     mazes = data['mazes']
     html = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
     html = replace_mazes(html, mazes)
-    # tmp/ 配下から img/ 等の相対パスが解決できるように
-    html = html.replace('<head>', '<head><base href="../">', 1)
+    if not publish:
+        # tmp/ 配下から img/ 等の相対パスが解決できるように
+        html = html.replace('<head>', '<head><base href="../">', 1)
     # 下端のプレビューバーが盤面のボタンに重ならないよう、その分だけ小さめに縮小
     html = html.replace('window.innerHeight/bh', '(window.innerHeight-44)/bh', 1)
     html = html.replace('</body>', preview_bar(mazes) + '</body>', 1)
-    out = os.path.join(ROOT, 'tmp', 'preview.html')
+    out = os.path.join(ROOT, 'preview.html' if publish else os.path.join('tmp', 'preview.html'))
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)
-    print('出力: tmp/preview.html（%d問 / 元データ: %s）' % (len(mazes), src))
+    print('出力: %s（%d問 / 元データ: %s）' %
+          (os.path.relpath(out, ROOT), len(mazes), src))
 
 
 if __name__ == '__main__':
