@@ -53,10 +53,10 @@
   .maze svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;}
   .maze-paths{filter:drop-shadow(0 3px 8px rgba(53,181,234,.45));}
   /* なぞった線（かくてい） */
-  #trace{fill:none;stroke:#ffd23f;stroke-width:40px;stroke-linecap:round;stroke-linejoin:round;
+  #trace{fill:none;stroke:#ffd23f;stroke-width:var(--tracew,40px);stroke-linecap:round;stroke-linejoin:round;
     filter:drop-shadow(0 0 6px rgba(255,170,0,.7));}
   /* ゆびに ついてくる線 */
-  #rubber{fill:none;stroke:#ffd23f;stroke-width:40px;stroke-linecap:round;opacity:.5;
+  #rubber{fill:none;stroke:#ffd23f;stroke-width:var(--tracew,40px);stroke-linecap:round;opacity:.5;
     filter:drop-shadow(0 0 6px rgba(255,170,0,.6));}
 
   .tab{
@@ -67,11 +67,11 @@
   .tab.goal{right:-12px;top:448px;letter-spacing:8px;animation:goalPulse 1.3s ease-in-out infinite;}
   @keyframes goalPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
 
-  /* ノード */
-  .node{position:absolute;width:180px;text-align:center;cursor:pointer;z-index:4;
+  /* ノード（大きさは盤面ごとに CSS変数で切り替え） */
+  .node{position:absolute;width:var(--nodew,180px);text-align:center;cursor:pointer;z-index:4;
     transition:transform .12s ease;}
   .node .pic{
-    width:122px;height:122px;margin:0 auto;border-radius:50%;
+    width:var(--pic,122px);height:var(--pic,122px);margin:0 auto;border-radius:50%;
     border:3px solid #cdd8e0;background:#fff;overflow:hidden;
     display:flex;align-items:center;justify-content:center;line-height:1;
     box-shadow:0 3px 6px rgba(0,0,0,.12);
@@ -84,7 +84,7 @@
   }
   .node .word{margin-top:4px;display:inline-block;}
   .node .word b{
-    background:#ffe27a;border-radius:7px;padding:1px 9px;font-size:19px;font-weight:900;color:#333;letter-spacing:1px;
+    background:#ffe27a;border-radius:7px;padding:1px 9px;font-size:var(--wordf,19px);font-weight:900;color:#333;letter-spacing:1px;
     display:inline-block;transition:background-color .15s ease;
   }
 
@@ -183,38 +183,9 @@
 
     <!-- めいろ -->
     <div class="maze" id="maze">
-      <!-- 白い通路 -->
+      <!-- 白い通路（JSで盤面ごとに生成） -->
       <svg class="maze-paths" viewBox="0 0 1064 640">
-        <g style="stroke:#ffffff;stroke-width:68px;stroke-linecap:round;fill:#ffffff;">
-          <line x1="58" y1="120" x2="130" y2="120"></line>
-          <line x1="130" y1="120" x2="400" y2="120"></line>
-          <line x1="400" y1="120" x2="670" y2="120"></line>
-          <line x1="670" y1="120" x2="930" y2="120"></line>
-          <line x1="265" y1="320" x2="530" y2="320"></line>
-          <line x1="530" y1="320" x2="795" y2="320"></line>
-          <line x1="130" y1="520" x2="400" y2="520"></line>
-          <line x1="400" y1="520" x2="670" y2="520"></line>
-          <line x1="670" y1="520" x2="930" y2="520"></line>
-          <line x1="130" y1="120" x2="265" y2="320"></line>
-          <line x1="400" y1="120" x2="530" y2="320"></line>
-          <line x1="670" y1="120" x2="530" y2="320"></line>
-          <line x1="930" y1="120" x2="795" y2="320"></line>
-          <line x1="265" y1="320" x2="130" y2="520"></line>
-          <line x1="530" y1="320" x2="670" y2="520"></line>
-          <line x1="930" y1="120" x2="930" y2="520"></line>
-          <line x1="930" y1="520" x2="1006" y2="520"></line>
-          <circle cx="130" cy="120" r="82"></circle>
-          <circle cx="400" cy="120" r="82"></circle>
-          <circle cx="670" cy="120" r="82"></circle>
-          <circle cx="930" cy="120" r="82"></circle>
-          <circle cx="265" cy="320" r="82"></circle>
-          <circle cx="530" cy="320" r="82"></circle>
-          <circle cx="795" cy="320" r="82"></circle>
-          <circle cx="130" cy="520" r="82"></circle>
-          <circle cx="400" cy="520" r="82"></circle>
-          <circle cx="670" cy="520" r="82"></circle>
-          <circle cx="930" cy="520" r="82"></circle>
-        </g>
+        <g id="paths"></g>
       </svg>
 
       <!-- なぞり線オーバーレイ -->
@@ -244,6 +215,7 @@
         <button class="lvbtn on" data-k="0">1</button>
         <button class="lvbtn" data-k="1">2</button>
         <button class="lvbtn" data-k="2">3</button>
+        <button class="lvbtn" data-k="3">4</button>
       </div>
     </div>
 
@@ -265,27 +237,57 @@
 
 <script>
 /* =========================================================
-   ノードと道のデータ（デザインの座標そのまま）
+   盤面プリセット（迷路ごとに使い分ける）
+   pos   … ノード座標（viewBox 1064x640 の中）
+   edges … つながっているノードのペア
+   start/goal … START・GOAL のノード番号
+   pic/nodeW/wordF/nodeR/corridorW/traceW/hit … 見た目とあたり判定の大きさ
+   stripe … 背景の縦縞2色
+   stubs … START/GOAL から外へ出る飾りの通路
    ========================================================= */
-/* 11個のノードの座標（すべての迷路で共通の盤面） */
-const POS = [
-  {x:130,y:120},{x:400,y:120},{x:670,y:120},{x:930,y:120}, // 0,1,2,3
-  {x:265,y:320},{x:530,y:320},{x:795,y:320},               // 4,5,6
-  {x:130,y:520},{x:400,y:520},{x:670,y:520},{x:930,y:520}, // 7,8,9,10
-];
-const START = 0, GOAL = 10;
+const BOARD_A = { // 標準（11マス）— もんだい1〜3
+  pos:[
+    {x:130,y:120},{x:400,y:120},{x:670,y:120},{x:930,y:120}, // 0,1,2,3
+    {x:265,y:320},{x:530,y:320},{x:795,y:320},               // 4,5,6
+    {x:130,y:520},{x:400,y:520},{x:670,y:520},{x:930,y:520}, // 7,8,9,10
+  ],
+  edges:[
+    [0,1],[1,2],[2,3],[4,5],[5,6],[7,8],[8,9],[9,10],
+    [0,4],[1,5],[2,5],[3,6],[4,7],[5,9],[3,10],
+  ],
+  start:0, goal:10,
+  pic:122, nodeW:180, wordF:19, nodeR:65, corridorW:68, traceW:40, hit:80,
+  stripe:['#e3f4fc','#d2ecfa'],
+  stubs:[[58,120,130,120],[930,520,1006,520]],
+};
+const BOARD_B = { // むずかしい（16マス・ピンク）— もんだい4
+  pos:[
+    {x:130,y:90 },{x:400,y:90 },{x:670,y:90 },{x:930,y:90 }, // 0,1,2,3
+    {x:130,y:243},{x:400,y:243},{x:670,y:243},{x:930,y:243}, // 4,5,6,7
+    {x:130,y:397},{x:400,y:397},{x:670,y:397},{x:930,y:397}, // 8,9,10,11
+    {x:130,y:550},{x:400,y:550},{x:670,y:550},{x:930,y:550}, // 12,13,14,15
+  ],
+  edges:[
+    [0,1],[0,4],[1,2],[1,5],[2,3],[2,6],[3,7],
+    [5,6],[5,9],[6,7],[6,10],[7,11],
+    [4,8],[8,9],[8,12],[9,10],[9,13],[10,11],[10,14],[11,15],
+    [12,13],[13,14],[14,15],
+  ],
+  start:0, goal:15,
+  pic:94, nodeW:150, wordF:15, nodeR:50, corridorW:46, traceW:30, hit:66,
+  stripe:['#fdeef2','#fadbe4'],
+  stubs:[[58,90,130,90],[930,550,1006,550]],
+};
 
-// 迷路の道（つながっているノードのペア）
-const EDGES = [
-  [0,1],[1,2],[2,3],[4,5],[5,6],[7,8],[8,9],[9,10],
-  [0,4],[1,5],[2,5],[3,6],[4,7],[5,9],[3,10],
-];
-const adj = POS.map(()=>[]);
-EDGES.forEach(([a,b])=>{ adj[a].push(b); adj[b].push(a); });
+/* 盤面から作られる、いまの状態（loadMaze で切り替わる） */
+let BOARD = BOARD_A;
+let START = BOARD_A.start, GOAL = BOARD_A.goal;
+let adj = [];
 
 /* 迷路データ：labels は位置0..10に置く{絵,ことば}、solution は正解ルート(位置の並び) */
 const MAZES = [
   { // もんだい1  にわとり→りんご→ごりら→らっぱ→ぱすた→たまご
+    board:BOARD_A,
     labels:[
       {img:'niwatori', word:'にわとり'},  {img:'ryu',      word:'りゅう'},
       {img:'randoseru',word:'らんどせる'},{img:'pasta',    word:'ぱすた'},
@@ -297,6 +299,7 @@ const MAZES = [
     solution:[0,4,5,6,3,10],
   },
   { // もんだい2  いるか→かがみ→みるく→くつした→たこ→こあら（左下まわりルート）
+    board:BOARD_A,
     labels:[
       {img:'iruka',     word:'いるか'},   {img:'kasa',     word:'かさ'},   // 0 / 1 わな(か)
       {img:'sai',       word:'さい'},     {img:'zou',      word:'ぞう'},   // 2 / 3 ダミー
@@ -308,6 +311,7 @@ const MAZES = [
     solution:[0,4,7,8,9,10],
   },
   { // もんだい3  とけい→いるか→かさ→さい→いのしし
+    board:BOARD_A,
     labels:[
       {img:'tokei',    word:'とけい'},    {img:'hebi',     word:'へび'},   // 1 ダミー
       {img:'pan',      word:'ぱん'},      {img:'momo',     word:'もも'},   // 2,3 ダミー
@@ -317,6 +321,22 @@ const MAZES = [
       {img:'inoshishi',word:'いのしし'},
     ],
     solution:[0,4,5,9,10],
+  },
+  { // もんだい4（16マス・むずかしい）
+    //   にわとり→りす→すいか→かさ→さくら→らっぱ→ぱすた→たまご→ごりら
+    //   ルート: 0-1-5-6-2-3-7-11-15
+    board:BOARD_B,
+    labels:[
+      {img:'niwatori', word:'にわとり'},  {img:'risu',    word:'りす'},     // 0 / 1
+      {img:'sakura',   word:'さくら'},    {img:'rappa',   word:'らっぱ'},   // 2 / 3
+      {img:'daikon',   word:'だいこん'},  {img:'suika',   word:'すいか'},   // 4 わな / 5
+      {img:'kasa',     word:'かさ'},      {img:'pasta',   word:'ぱすた'},   // 6 / 7
+      {img:'pan',      word:'ぱん'},      {img:'fuusen',  word:'ふうせん'}, // 8 わな / 9 わな
+      {img:'kitsune',  word:'きつね'},    {img:'tamago',  word:'たまご'},   // 10 わな / 11
+      {img:'megane',   word:'めがね'},    {img:'hebi',    word:'へび'},     // 12 わな / 13 わな
+      {img:'kuma',     word:'くま'},      {img:'gorira',  word:'ごりら'},   // 14 わな / 15 ゴール
+    ],
+    solution:[0,1,5,6,2,3,7,11,15],
   },
 ];
 
@@ -366,27 +386,65 @@ function speak(word){
 }
 
 /* =========================================================
-   ノードのDOM生成
+   盤面（通路SVG・ノードDOM・あたり判定）を作りなおす
    ========================================================= */
 const maze = document.getElementById('maze');
 const nodeEls = [];
-POS.forEach((p,i)=>{
-  const el=document.createElement('div');
-  el.className='node';
-  el.style.left=(p.x-90)+'px';
-  el.style.top =(p.y-66)+'px';
-  el.dataset.i=i;
-  el.innerHTML=`<div class="pic"><img alt="" draggable="false"></div>
-                <div class="word"><b></b></div>`;
-  maze.appendChild(el);
-  nodeEls.push(el);
-});
+
+function buildBoard(board){
+  BOARD = board;
+  START = board.start; GOAL = board.goal;
+  // 隣接リスト
+  adj = board.pos.map(()=>[]);
+  board.edges.forEach(([a,b])=>{ adj[a].push(b); adj[b].push(a); });
+
+  // 大きさ（CSS変数）
+  maze.style.setProperty('--pic',    board.pic  +'px');
+  maze.style.setProperty('--nodew',  board.nodeW+'px');
+  maze.style.setProperty('--wordf',  board.wordF+'px');
+  maze.style.setProperty('--tracew', board.traceW+'px');
+
+  // 背景の縦縞
+  document.querySelector('.board').style.background =
+    `repeating-linear-gradient(90deg,${board.stripe[0]} 0px,${board.stripe[0]} 14px,`+
+    `${board.stripe[1]} 14px,${board.stripe[1]} 28px)`;
+
+  // 白い通路（線＋ノードの丸＋START/GOALの飾り）
+  let svg='';
+  (board.stubs||[]).forEach(([x1,y1,x2,y2])=>{ svg+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"></line>`; });
+  board.edges.forEach(([a,b])=>{ const A=board.pos[a],B=board.pos[b];
+    svg+=`<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}"></line>`; });
+  board.pos.forEach(p=>{ svg+=`<circle cx="${p.x}" cy="${p.y}" r="${board.nodeR}"></circle>`; });
+  const g=document.getElementById('paths');
+  g.setAttribute('style',`stroke:#fff;stroke-width:${board.corridorW}px;stroke-linecap:round;fill:#fff;`);
+  g.innerHTML=svg;
+
+  // ノードDOM（盤面ごとに作りなおす）
+  nodeEls.forEach(el=>el.remove());
+  nodeEls.length=0;
+  board.pos.forEach((p,i)=>{
+    const el=document.createElement('div');
+    el.className='node';
+    el.style.left=(p.x-board.nodeW/2)+'px';
+    el.style.top =(p.y-board.pic/2-5)+'px';
+    el.dataset.i=i;
+    el.innerHTML=`<div class="pic"><img alt="" draggable="false"></div>
+                  <div class="word"><b></b></div>`;
+    maze.appendChild(el);
+    nodeEls.push(el);
+  });
+
+  // スタート・ゴールの ふだ の たかさ
+  document.querySelector('.tab.start').style.top=(board.pos[START].y-75)+'px';
+  document.querySelector('.tab.goal' ).style.top=(board.pos[GOAL ].y-75)+'px';
+}
 
 /* 迷路を切り替える */
 function loadMaze(k){
   mz = k;
   const m = MAZES[k];
-  NODES = POS.map((p,i)=>({x:p.x, y:p.y, img:m.labels[i].img, word:m.labels[i].word}));
+  buildBoard(m.board);
+  NODES = m.board.pos.map((p,i)=>({x:p.x, y:p.y, img:m.labels[i].img, word:m.labels[i].word}));
   SOLUTION = m.solution;
   nodeEls.forEach((el,i)=>{
     const img = el.querySelector('img');
@@ -463,7 +521,6 @@ function enterNode(i){
 /* =========================================================
    ゆびで なぞる（ポインター／タッチ ドラッグ）
    ========================================================= */
-const HIT_R = 80;              // ノードに反応する半径
 const rubber = document.getElementById('rubber');
 let dragging = false, lastZone = -1;
 
@@ -475,11 +532,13 @@ function toSvg(e){
   };
 }
 function nodeAt(p){
+  // 半径内でいちばん近いノードを選ぶ（マスが密でも取り違えない）
+  const R=BOARD.hit; let best=-1, bd=R*R;
   for(let i=0;i<NODES.length;i++){
-    const dx=p.x-NODES[i].x, dy=p.y-NODES[i].y;
-    if(dx*dx+dy*dy <= HIT_R*HIT_R) return i;
+    const dx=p.x-NODES[i].x, dy=p.y-NODES[i].y, d=dx*dx+dy*dy;
+    if(d<=bd){ bd=d; best=i; }
   }
-  return -1;
+  return best;
 }
 function drawRubber(p){
   const h = NODES[path[path.length-1]];
