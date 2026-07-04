@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>しりとり めいろ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Zen Maru Gothic',sans-serif;
+    background:#bfe6f7;
+    min-height:100vh;
+    display:flex;align-items:flex-start;justify-content:center;
+    overflow-x:hidden;
+    touch-action:manipulation;
+  }
+  /* ===== 全体を画面幅に合わせて拡大縮小 ===== */
+  #stage{transform-origin:top center;}
+  .board{
+    width:1120px;min-height:790px;
+    background:repeating-linear-gradient(90deg,#e3f4fc 0px,#e3f4fc 14px,#d2ecfa 14px,#d2ecfa 28px);
+    padding:24px 28px 16px;position:relative;
+    box-shadow:0 20px 50px rgba(30,110,160,.35);
+    border-radius:8px;
+    margin:10px auto;
+  }
+
+  /* ===== ヘッダー ===== */
+  .head{display:flex;align-items:flex-start;gap:22px;}
+  .title{
+    font-size:42px;font-weight:900;color:#28aeea;letter-spacing:4px;
+    text-shadow:3px 0 0 #fff,-3px 0 0 #fff,0 3px 0 #fff,0 -3px 0 #fff,2px 2px 0 #fff,-2px 2px 0 #fff,2px -2px 0 #fff,-2px -2px 0 #fff,4px 4px 0 rgba(40,174,234,.25);
+  }
+  .badge{
+    background:#5b3a1e;color:#fff;font-size:26px;font-weight:900;letter-spacing:6px;
+    padding:6px 52px;border-radius:24px;
+  }
+  .desc{font-size:22px;font-weight:900;color:#333;margin-top:10px;letter-spacing:1px;white-space:nowrap;}
+  .name{
+    width:330px;height:88px;background:#fff;border:3px solid #5b3a1e;border-radius:6px;padding:6px 10px;
+    display:flex;flex-direction:column;
+  }
+  .name span{font-size:16px;font-weight:700;color:#333;}
+  .name input{border:none;outline:none;font-family:inherit;font-size:34px;font-weight:900;color:#333;background:transparent;flex:1;width:100%;}
+
+  /* ===== めいろ本体 ===== */
+  .maze{position:relative;width:1064px;height:640px;margin-top:10px;
+    touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+  .maze svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;}
+  .maze-paths{filter:drop-shadow(0 3px 8px rgba(53,181,234,.45));}
+  /* なぞった線（かくてい） */
+  #trace{fill:none;stroke:#ffd23f;stroke-width:40px;stroke-linecap:round;stroke-linejoin:round;
+    filter:drop-shadow(0 0 6px rgba(255,170,0,.7));}
+  /* ゆびに ついてくる線 */
+  #rubber{fill:none;stroke:#ffd23f;stroke-width:40px;stroke-linecap:round;opacity:.5;
+    filter:drop-shadow(0 0 6px rgba(255,170,0,.6));}
+
+  .tab{
+    position:absolute;background:#35b5ea;color:#fff;font-size:24px;font-weight:900;
+    writing-mode:vertical-rl;padding:14px 6px;border-radius:8px;box-shadow:0 2px 0 rgba(0,0,0,.1);z-index:5;
+  }
+  .tab.start{left:-10px;top:38px;letter-spacing:6px;}
+  .tab.goal{right:-12px;top:448px;letter-spacing:8px;animation:goalPulse 1.3s ease-in-out infinite;}
+  @keyframes goalPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+
+  /* ノード */
+  .node{position:absolute;width:180px;text-align:center;cursor:pointer;z-index:4;
+    transition:transform .12s ease;}
+  .node .pic{
+    width:122px;height:122px;margin:0 auto;border-radius:50%;
+    border:3px solid #cdd8e0;background:#fff;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;line-height:1;
+    box-shadow:0 3px 6px rgba(0,0,0,.12);
+    transition:border-color .15s ease, box-shadow .15s ease;
+    user-select:none;
+  }
+  .node .pic img{
+    width:100%;height:100%;object-fit:contain;display:block;
+    pointer-events:none;-webkit-user-drag:none;user-select:none;
+  }
+  .node .word{margin-top:4px;display:inline-block;}
+  .node .word b{
+    background:#ffe27a;border-radius:7px;padding:1px 9px;font-size:19px;font-weight:900;color:#333;letter-spacing:1px;
+    display:inline-block;transition:background-color .15s ease;
+  }
+
+  /* 状態 — 大きさ・位置は かえず、色とにじむ光だけで表現する
+     （box-shadow はレイアウトに影響しないので 絵・なまえ は動かない） */
+  .node.done .pic{border-color:#3fbf6a;border-width:4px;
+    box-shadow:0 0 14px 1px rgba(63,191,106,.55), 0 3px 6px rgba(0,0,0,.12);}
+  .node.done .word b{background:#8ef0aa;}
+  .node.current .pic{border-color:#ff8c1a;border-width:4px;
+    box-shadow:0 0 16px 2px rgba(255,140,26,.65), 0 3px 6px rgba(0,0,0,.12);
+    animation:headGlow 1s ease-in-out infinite;}
+  @keyframes headGlow{
+    0%,100%{box-shadow:0 0 14px 1px rgba(255,140,26,.5), 0 3px 6px rgba(0,0,0,.12);}
+    50%    {box-shadow:0 0 20px 3px rgba(255,140,26,.85), 0 3px 6px rgba(0,0,0,.12);}
+  }
+  .node.hintable .pic{animation:hintGlow 1s ease-in-out 2;}
+  @keyframes hintGlow{
+    0%,100%{box-shadow:0 3px 6px rgba(0,0,0,.12);}
+    50%    {box-shadow:0 0 22px 4px rgba(255,211,63,.9), 0 3px 6px rgba(0,0,0,.12);}
+  }
+  .node.wrong .word b{background:#ffb0b0;}
+
+  /* ===== フッター & コントロール ===== */
+  .foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px;}
+  .controls{display:flex;gap:12px;}
+  .btn{
+    font-family:inherit;font-weight:900;font-size:22px;color:#fff;border:none;border-radius:30px;
+    padding:12px 30px;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.18);transition:transform .1s,box-shadow .1s;
+  }
+  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.18);}
+  .btn.hint{background:#ffab2e;}
+  .btn.redo{background:#7ac0e8;}
+  .credit{font-size:14px;font-weight:700;color:#555;}
+
+  /* しりとりトラック（下部にあつめた ことば） */
+  .track{
+    display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 0;min-height:44px;
+  }
+  .track .chip{
+    background:#fff;border:2px solid #ffd23f;border-radius:20px;padding:3px 14px;font-size:20px;font-weight:900;color:#c47a00;
+    animation:pop .3s ease;
+  }
+  .track .arrow{color:#8aa;font-weight:900;font-size:18px;}
+  @keyframes pop{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}
+
+  /* ===== 勝利オーバーレイ ===== */
+  #win{
+    position:fixed;inset:0;background:rgba(20,120,180,.55);backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;z-index:50;
+  }
+  #win.show{display:flex;animation:fade .3s;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .winbox{
+    background:#fff;border-radius:30px;padding:40px 60px;text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);border:8px solid #ffd23f;animation:bounceIn .5s;
+  }
+  @keyframes bounceIn{0%{transform:scale(.4)}60%{transform:scale(1.1)}100%{transform:scale(1)}}
+  .winbox .big{font-size:74px;font-weight:900;color:#ff8c1a;letter-spacing:4px;
+    text-shadow:3px 3px 0 #ffe27a;}
+  .winbox .stars{font-size:60px;margin:6px 0;}
+  .winbox .sub{font-size:26px;font-weight:900;color:#3fbf6a;margin-bottom:18px;}
+  .winbox .btn{background:#3fbf6a;font-size:28px;padding:14px 46px;}
+
+  .confetti{position:fixed;top:-20px;width:12px;height:16px;z-index:60;pointer-events:none;border-radius:2px;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="board">
+
+    <!-- ヘッダー -->
+    <div class="head">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:24px;">
+          <div class="title">しりとり めいろ</div>
+          <div class="badge">かんたん 1</div>
+        </div>
+        <div class="desc">スタートからゴールまで、ゆびでしりとりになるようになぞりましょう。</div>
+      </div>
+      <label class="name">
+        <span>なまえ</span>
+        <input type="text" placeholder="" aria-label="なまえ">
+      </label>
+    </div>
+
+    <!-- めいろ -->
+    <div class="maze" id="maze">
+      <!-- 白い通路 -->
+      <svg class="maze-paths" viewBox="0 0 1064 640">
+        <g style="stroke:#ffffff;stroke-width:68px;stroke-linecap:round;fill:#ffffff;">
+          <line x1="58" y1="120" x2="130" y2="120"></line>
+          <line x1="130" y1="120" x2="400" y2="120"></line>
+          <line x1="400" y1="120" x2="670" y2="120"></line>
+          <line x1="670" y1="120" x2="930" y2="120"></line>
+          <line x1="265" y1="320" x2="530" y2="320"></line>
+          <line x1="530" y1="320" x2="795" y2="320"></line>
+          <line x1="130" y1="520" x2="400" y2="520"></line>
+          <line x1="400" y1="520" x2="670" y2="520"></line>
+          <line x1="670" y1="520" x2="930" y2="520"></line>
+          <line x1="130" y1="120" x2="265" y2="320"></line>
+          <line x1="400" y1="120" x2="530" y2="320"></line>
+          <line x1="670" y1="120" x2="530" y2="320"></line>
+          <line x1="930" y1="120" x2="795" y2="320"></line>
+          <line x1="265" y1="320" x2="130" y2="520"></line>
+          <line x1="530" y1="320" x2="670" y2="520"></line>
+          <line x1="930" y1="120" x2="930" y2="520"></line>
+          <line x1="930" y1="520" x2="1006" y2="520"></line>
+          <circle cx="130" cy="120" r="82"></circle>
+          <circle cx="400" cy="120" r="82"></circle>
+          <circle cx="670" cy="120" r="82"></circle>
+          <circle cx="930" cy="120" r="82"></circle>
+          <circle cx="265" cy="320" r="82"></circle>
+          <circle cx="530" cy="320" r="82"></circle>
+          <circle cx="795" cy="320" r="82"></circle>
+          <circle cx="130" cy="520" r="82"></circle>
+          <circle cx="400" cy="520" r="82"></circle>
+          <circle cx="670" cy="520" r="82"></circle>
+          <circle cx="930" cy="520" r="82"></circle>
+        </g>
+      </svg>
+
+      <!-- なぞり線オーバーレイ -->
+      <svg viewBox="0 0 1064 640" style="pointer-events:none;">
+        <polyline id="trace" points=""></polyline>
+        <line id="rubber" x1="0" y1="0" x2="0" y2="0" style="display:none"></line>
+      </svg>
+
+      <!-- スタート・ゴール -->
+      <div class="tab start">スタート</div>
+      <div class="tab goal">ゴール</div>
+
+      <!-- ノードはJSで生成 -->
+    </div>
+
+    <!-- あつめた ことば -->
+    <div class="track" id="track"></div>
+
+    <!-- フッター -->
+    <div class="foot">
+      <div class="controls">
+        <button class="btn hint" id="hintBtn">💡 ヒント</button>
+        <button class="btn redo" id="redoBtn">↺ もういちど</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 勝利 -->
+<div id="win">
+  <div class="winbox">
+    <div class="stars">⭐⭐⭐</div>
+    <div class="big">せいかい！</div>
+    <div class="sub">ゴールまで しりとりできたね！</div>
+    <button class="btn" id="againBtn">もういちど あそぶ</button>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   ノードと道のデータ（デザインの座標そのまま）
+   ========================================================= */
+const NODES = [
+  { x:130, y:120, img:'niwatori',  word:'にわとり' }, // 0  スタート
+  { x:400, y:120, img:'ryu',       word:'りゅう'   }, // 1  ダミー
+  { x:670, y:120, img:'randoseru', word:'らんどせる'}, // 2  ダミー
+  { x:930, y:120, img:'pasta',     word:'ぱすた'   }, // 3
+  { x:265, y:320, img:'ringo',     word:'りんご'   }, // 4
+  { x:530, y:320, img:'gorira',    word:'ごりら'   }, // 5
+  { x:795, y:320, img:'rappa',     word:'らっぱ'   }, // 6
+  { x:130, y:520, img:'risu',      word:'りす'    }, // 7  ダミー
+  { x:400, y:520, img:'suika',     word:'すいか'   }, // 8  ダミー
+  { x:670, y:520, img:'karasu',    word:'からす'   }, // 9  ダミー
+  { x:930, y:520, img:'tamago',    word:'たまご'   }, // 10 ゴール
+];
+const START = 0, GOAL = 10;
+
+// 迷路の道（つながっているノードのペア）
+const EDGES = [
+  [0,1],[1,2],[2,3],[4,5],[5,6],[7,8],[8,9],[9,10],
+  [0,4],[1,5],[2,5],[3,6],[4,7],[5,9],[3,10],
+];
+const adj = NODES.map(()=>[]);
+EDGES.forEach(([a,b])=>{ adj[a].push(b); adj[b].push(a); });
+
+// 正解ルート: 0→4→5→6→3→10
+const SOLUTION = [0,4,5,6,3,10];
+
+/* しりとり判定用：ちいさい文字・のばす音をならす */
+function lastKana(w){
+  let c = w[w.length-1];
+  if('ゃゅょぁぃぅぇぉっ'.includes(c)) c = w[w.length-2]; // ちいさい音は前の文字
+  if(c==='ー') c = w[w.length-2];
+  return c;
+}
+function firstKana(w){ return w[0]; }
+function shiritoriOK(prevWord, nextWord){
+  return lastKana(prevWord) === firstKana(nextWord);
+}
+
+/* =========================================================
+   おと（WebAudio）＆ よみあげ
+   ========================================================= */
+let actx;
+function ac(){ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); return actx; }
+function beep(freq, t0, dur, type='sine', vol=0.25){
+  const c=ac(), o=c.createOscillator(), g=c.createGain();
+  o.type=type; o.frequency.value=freq;
+  o.connect(g); g.connect(c.destination);
+  const s=c.currentTime+t0;
+  g.gain.setValueAtTime(0,s);
+  g.gain.linearRampToValueAtTime(vol,s+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001,s+dur);
+  o.start(s); o.stop(s+dur+0.02);
+}
+const sndGood = ()=>{ beep(660,0,.12,'triangle'); beep(880,.1,.15,'triangle'); };
+const sndBad  = ()=>{ beep(200,0,.18,'sawtooth',.18); beep(150,.12,.22,'sawtooth',.18); };
+const sndWin  = ()=>{ [523,659,784,1046].forEach((f,i)=>beep(f,i*0.13,.3,'triangle',.28)); };
+
+function speak(word){
+  if(!('speechSynthesis' in window)) return;
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(word);
+    u.lang='ja-JP'; u.rate=0.85; u.pitch=1.25;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+/* =========================================================
+   ノードのDOM生成
+   ========================================================= */
+const maze = document.getElementById('maze');
+const nodeEls = [];
+NODES.forEach((n,i)=>{
+  const el=document.createElement('div');
+  el.className='node';
+  el.style.left=(n.x-90)+'px';
+  el.style.top =(n.y-66)+'px';
+  el.dataset.i=i;
+  el.innerHTML=`<div class="pic"><img src="img/nodes/${n.img}.png" alt="${n.word}" draggable="false"></div>
+                <div class="word"><b>${n.word}</b></div>`;
+  maze.appendChild(el);
+  nodeEls.push(el);
+});
+
+const traceEl = document.getElementById('trace');
+const trackEl = document.getElementById('track');
+
+/* =========================================================
+   ゲーム状態
+   ========================================================= */
+let path = [START];
+
+function render(){
+  // ノードの見た目
+  nodeEls.forEach((el,i)=>{
+    el.classList.remove('done','current');
+    const idx = path.indexOf(i);
+    if(idx>=0 && idx < path.length-1) el.classList.add('done');
+    if(i===path[path.length-1]) el.classList.add('current');
+  });
+  // なぞり線
+  const pts = path.map(i=>`${NODES[i].x},${NODES[i].y}`).join(' ');
+  traceEl.setAttribute('points',pts);
+  // あつめたことば
+  trackEl.innerHTML='';
+  path.forEach((i,k)=>{
+    if(k>0){ const a=document.createElement('span'); a.className='arrow'; a.textContent='▶'; trackEl.appendChild(a); }
+    const c=document.createElement('span'); c.className='chip'; c.textContent=NODES[i].word; trackEl.appendChild(c);
+  });
+}
+
+/* ノードを「通過」したときの処理（ドラッグ中に呼ばれる） */
+function enterNode(i){
+  const head = path[path.length-1];
+  if(i===head) return;
+
+  // すでに通った場所 → そこまで もどる（ゆびを戻すと戻れる）
+  const back = path.indexOf(i);
+  if(back>=0){
+    path = path.slice(0, back+1);
+    beep(500,0,.08,'sine',.15);
+    render();
+    return;
+  }
+
+  // つながっている？ かつ しりとりOK？
+  const connected = adj[head].includes(i);
+  const ok = connected && shiritoriOK(NODES[head].word, NODES[i].word);
+
+  if(ok){
+    path.push(i);
+    sndGood();
+    speak(NODES[i].word);
+    render();
+    if(i===GOAL){ endDrag(); setTimeout(win, 450); }
+  }else{
+    // ざんねん（このノードから先には すすめない）
+    sndBad();
+    const el=nodeEls[i];
+    el.classList.add('wrong');
+    setTimeout(()=>el.classList.remove('wrong'),480);
+  }
+}
+
+/* =========================================================
+   ゆびで なぞる（ポインター／タッチ ドラッグ）
+   ========================================================= */
+const HIT_R = 80;              // ノードに反応する半径
+const rubber = document.getElementById('rubber');
+let dragging = false, lastZone = -1;
+
+function toSvg(e){
+  const r = maze.getBoundingClientRect();
+  return {
+    x:(e.clientX - r.left) / r.width  * 1064,
+    y:(e.clientY - r.top ) / r.height * 640,
+  };
+}
+function nodeAt(p){
+  for(let i=0;i<NODES.length;i++){
+    const dx=p.x-NODES[i].x, dy=p.y-NODES[i].y;
+    if(dx*dx+dy*dy <= HIT_R*HIT_R) return i;
+  }
+  return -1;
+}
+function drawRubber(p){
+  const h = NODES[path[path.length-1]];
+  rubber.setAttribute('x1',h.x); rubber.setAttribute('y1',h.y);
+  rubber.setAttribute('x2',p.x); rubber.setAttribute('y2',p.y);
+  rubber.style.display='';
+}
+function endDrag(){
+  dragging=false; lastZone=-1; rubber.style.display='none';
+}
+function isWinOpen(){ return document.getElementById('win').classList.contains('show'); }
+
+maze.addEventListener('pointerdown', e=>{
+  if(isWinOpen()) return;
+  ac();
+  dragging = true;
+  try{ maze.setPointerCapture(e.pointerId); }catch(_){}
+  const p = toSvg(e);
+  lastZone = nodeAt(p);
+  if(lastZone>=0) enterNode(lastZone);
+  drawRubber(p);
+  e.preventDefault();
+});
+maze.addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  const p = toSvg(e);
+  const z = nodeAt(p);
+  if(z !== lastZone){          // 新しいゾーンに入ったときだけ判定
+    lastZone = z;
+    if(z>=0) enterNode(z);
+  }
+  drawRubber(p);
+  e.preventDefault();
+});
+function onUp(e){ if(!dragging) return; endDrag(); if(e&&e.preventDefault) e.preventDefault(); }
+maze.addEventListener('pointerup', onUp);
+maze.addEventListener('pointercancel', onUp);
+
+/* ヒント：つぎの正解ノードを ひからせる */
+function hint(){
+  const head = path[path.length-1];
+  // いまのパスが正解ルートの途中かどうか
+  let next=null;
+  const si = SOLUTION.indexOf(head);
+  if(si>=0 && si<SOLUTION.length-1 && SOLUTION.slice(0,si+1).every((v,k)=>v===path[k])){
+    next = SOLUTION[si+1];
+  }
+  if(next===null){
+    // ルートから外れている → スタートへ戻るよう促す
+    const startEl=nodeEls[path[0]];
+    startEl.classList.add('hintable');
+    setTimeout(()=>startEl.classList.remove('hintable'),2000);
+    beep(400,0,.1,'sine',.15);
+    return;
+  }
+  const el=nodeEls[next];
+  el.classList.add('hintable');
+  beep(880,0,.1,'sine',.15);
+  setTimeout(()=>el.classList.remove('hintable'),2000);
+}
+
+/* リセット */
+function reset(){
+  path=[START];
+  document.getElementById('win').classList.remove('show');
+  render();
+}
+
+/* 勝利演出 */
+function win(){
+  sndWin();
+  speak('せいかい！ よくできました！');
+  document.getElementById('win').classList.add('show');
+  confetti();
+}
+function confetti(){
+  const colors=['#ffd23f','#35b5ea','#3fbf6a','#ff8c1a','#ff5d8f','#a06bff'];
+  for(let k=0;k<80;k++){
+    const c=document.createElement('div');
+    c.className='confetti';
+    c.style.left=Math.random()*100+'vw';
+    c.style.background=colors[k%colors.length];
+    c.style.transform=`rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(c);
+    const dur=2+Math.random()*2, delay=Math.random()*0.6;
+    c.animate([
+      {transform:`translateY(0) rotate(0deg)`,opacity:1},
+      {transform:`translateY(105vh) rotate(${720+Math.random()*360}deg)`,opacity:1}
+    ],{duration:dur*1000,delay:delay*1000,easing:'ease-in'});
+    setTimeout(()=>c.remove(),(dur+delay)*1000+100);
+  }
+}
+
+document.getElementById('hintBtn').addEventListener('click',()=>{ac();hint();});
+document.getElementById('redoBtn').addEventListener('click',reset);
+document.getElementById('againBtn').addEventListener('click',reset);
+// 最初のタップで音を有効化（モバイル対策）
+document.body.addEventListener('pointerdown',()=>ac(),{once:true});
+
+/* =========================================================
+   画面幅に合わせてスケール
+   ========================================================= */
+function fit(){
+  const stage=document.getElementById('stage');
+  const bw=1120+8; // 盤の幅＋余白
+  const s=Math.min(1, (window.innerWidth)/bw);
+  stage.style.transform=`scale(${s})`;
+  // 高さぶんの余白調整
+  document.body.style.height='';
+}
+window.addEventListener('resize',fit);
+
+render();
+fit();
+</script>
+</body>
+</html>
