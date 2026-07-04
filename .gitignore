@@ -4,3 +4,4 @@ tmp/
 
 # 元素材（未使用・大容量）。切り出し済みの img/nodes/ のみ公開する
 img/*.png
+__pycache__/
