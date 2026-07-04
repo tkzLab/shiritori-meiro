@@ -119,6 +119,17 @@
   .btn.redo{background:#7ac0e8;}
   .credit{font-size:14px;font-weight:700;color:#555;}
 
+  /* めいろ切り替え */
+  .levels{display:flex;align-items:center;gap:9px;}
+  .lvlabel{font-weight:900;color:#5b3a1e;font-size:19px;letter-spacing:1px;}
+  .lvbtn{
+    font-family:inherit;font-weight:900;font-size:24px;width:50px;height:50px;border-radius:50%;
+    border:3px solid #35b5ea;background:#fff;color:#35b5ea;cursor:pointer;
+    box-shadow:0 4px 0 rgba(0,0,0,.15);transition:transform .1s,box-shadow .1s;
+  }
+  .lvbtn.on{background:#35b5ea;color:#fff;}
+  .lvbtn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.15);}
+
   /* しりとりトラック（下部にあつめた ことば） */
   .track{
     display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 0;min-height:44px;
@@ -160,7 +171,7 @@
       <div style="flex:1;">
         <div style="display:flex;align-items:center;gap:24px;">
           <div class="title">しりとり めいろ</div>
-          <div class="badge">かんたん 1</div>
+          <div class="badge" id="badge">もんだい 1</div>
         </div>
         <div class="desc">スタートからゴールまで、ゆびでしりとりになるようになぞりましょう。</div>
       </div>
@@ -228,6 +239,12 @@
         <button class="btn hint" id="hintBtn">💡 ヒント</button>
         <button class="btn redo" id="redoBtn">↺ もういちど</button>
       </div>
+      <div class="levels">
+        <span class="lvlabel">めいろ</span>
+        <button class="lvbtn on" data-k="0">1</button>
+        <button class="lvbtn" data-k="1">2</button>
+        <button class="lvbtn" data-k="2">3</button>
+      </div>
     </div>
 
   </div>
@@ -239,7 +256,10 @@
     <div class="stars">⭐⭐⭐</div>
     <div class="big">せいかい！</div>
     <div class="sub">ゴールまで しりとりできたね！</div>
-    <button class="btn" id="againBtn">もういちど あそぶ</button>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn" id="againBtn">もういちど</button>
+      <button class="btn" id="nextBtn" style="background:#ffab2e;">つぎのめいろ ▶</button>
+    </div>
   </div>
 </div>
 
@@ -247,18 +267,11 @@
 /* =========================================================
    ノードと道のデータ（デザインの座標そのまま）
    ========================================================= */
-const NODES = [
-  { x:130, y:120, img:'niwatori',  word:'にわとり' }, // 0  スタート
-  { x:400, y:120, img:'ryu',       word:'りゅう'   }, // 1  ダミー
-  { x:670, y:120, img:'randoseru', word:'らんどせる'}, // 2  ダミー
-  { x:930, y:120, img:'pasta',     word:'ぱすた'   }, // 3
-  { x:265, y:320, img:'ringo',     word:'りんご'   }, // 4
-  { x:530, y:320, img:'gorira',    word:'ごりら'   }, // 5
-  { x:795, y:320, img:'rappa',     word:'らっぱ'   }, // 6
-  { x:130, y:520, img:'risu',      word:'りす'    }, // 7  ダミー
-  { x:400, y:520, img:'suika',     word:'すいか'   }, // 8  ダミー
-  { x:670, y:520, img:'karasu',    word:'からす'   }, // 9  ダミー
-  { x:930, y:520, img:'tamago',    word:'たまご'   }, // 10 ゴール
+/* 11個のノードの座標（すべての迷路で共通の盤面） */
+const POS = [
+  {x:130,y:120},{x:400,y:120},{x:670,y:120},{x:930,y:120}, // 0,1,2,3
+  {x:265,y:320},{x:530,y:320},{x:795,y:320},               // 4,5,6
+  {x:130,y:520},{x:400,y:520},{x:670,y:520},{x:930,y:520}, // 7,8,9,10
 ];
 const START = 0, GOAL = 10;
 
@@ -267,11 +280,49 @@ const EDGES = [
   [0,1],[1,2],[2,3],[4,5],[5,6],[7,8],[8,9],[9,10],
   [0,4],[1,5],[2,5],[3,6],[4,7],[5,9],[3,10],
 ];
-const adj = NODES.map(()=>[]);
+const adj = POS.map(()=>[]);
 EDGES.forEach(([a,b])=>{ adj[a].push(b); adj[b].push(a); });
 
-// 正解ルート: 0→4→5→6→3→10
-const SOLUTION = [0,4,5,6,3,10];
+/* 迷路データ：labels は位置0..10に置く{絵,ことば}、solution は正解ルート(位置の並び) */
+const MAZES = [
+  { // もんだい1  にわとり→りんご→ごりら→らっぱ→ぱすた→たまご
+    labels:[
+      {img:'niwatori', word:'にわとり'},  {img:'ryu',      word:'りゅう'},
+      {img:'randoseru',word:'らんどせる'},{img:'pasta',    word:'ぱすた'},
+      {img:'ringo',    word:'りんご'},    {img:'gorira',   word:'ごりら'},
+      {img:'rappa',    word:'らっぱ'},    {img:'risu',     word:'りす'},
+      {img:'suika',    word:'すいか'},    {img:'karasu',   word:'からす'},
+      {img:'tamago',   word:'たまご'},
+    ],
+    solution:[0,4,5,6,3,10],
+  },
+  { // もんだい2  いるか→かがみ→みるく→くつした→たこ→こあら
+    labels:[
+      {img:'iruka',     word:'いるか'},   {img:'kasa',     word:'かさ'},   // 1 わな(か)
+      {img:'sai',       word:'さい'},     {img:'tako',     word:'たこ'},   // 2 わな(さ)
+      {img:'kagami',    word:'かがみ'},   {img:'milk',     word:'みるく'},
+      {img:'kutsushita',word:'くつした'}, {img:'zou',      word:'ぞう'},   // 7 ダミー
+      {img:'sushi',     word:'すし'},     {img:'kuma',     word:'くま'},   // 9 わな(く)
+      {img:'koala',     word:'こあら'},
+    ],
+    solution:[0,4,5,6,3,10],
+  },
+  { // もんだい3  とけい→いるか→かさ→さい→いのしし
+    labels:[
+      {img:'tokei',    word:'とけい'},    {img:'hebi',     word:'へび'},   // 1 ダミー
+      {img:'pan',      word:'ぱん'},      {img:'momo',     word:'もも'},   // 2,3 ダミー
+      {img:'iruka',    word:'いるか'},    {img:'kasa',     word:'かさ'},
+      {img:'sakura',   word:'さくら'},    {img:'kagami',   word:'かがみ'}, // 6 わな(さ) 7 わな(か)
+      {img:'hoshi',    word:'ほし'},      {img:'sai',      word:'さい'},   // 8 ダミー
+      {img:'inoshishi',word:'いのしし'},
+    ],
+    solution:[0,4,5,9,10],
+  },
+];
+
+let mz = 0;          // 今の迷路
+let NODES = [];      // 現在の迷路の {x,y,img,word}（位置順）
+let SOLUTION = [];
 
 /* しりとり判定用：ちいさい文字・のばす音をならす */
 function lastKana(w){
@@ -319,17 +370,35 @@ function speak(word){
    ========================================================= */
 const maze = document.getElementById('maze');
 const nodeEls = [];
-NODES.forEach((n,i)=>{
+POS.forEach((p,i)=>{
   const el=document.createElement('div');
   el.className='node';
-  el.style.left=(n.x-90)+'px';
-  el.style.top =(n.y-66)+'px';
+  el.style.left=(p.x-90)+'px';
+  el.style.top =(p.y-66)+'px';
   el.dataset.i=i;
-  el.innerHTML=`<div class="pic"><img src="img/nodes/${n.img}.png" alt="${n.word}" draggable="false"></div>
-                <div class="word"><b>${n.word}</b></div>`;
+  el.innerHTML=`<div class="pic"><img alt="" draggable="false"></div>
+                <div class="word"><b></b></div>`;
   maze.appendChild(el);
   nodeEls.push(el);
 });
+
+/* 迷路を切り替える */
+function loadMaze(k){
+  mz = k;
+  const m = MAZES[k];
+  NODES = POS.map((p,i)=>({x:p.x, y:p.y, img:m.labels[i].img, word:m.labels[i].word}));
+  SOLUTION = m.solution;
+  nodeEls.forEach((el,i)=>{
+    const img = el.querySelector('img');
+    img.src = 'img/nodes/'+NODES[i].img+'.png';
+    img.alt = NODES[i].word;
+    el.querySelector('.word b').textContent = NODES[i].word;
+  });
+  const badge = document.getElementById('badge');
+  if(badge) badge.textContent = 'もんだい '+(k+1);
+  document.querySelectorAll('.lvbtn').forEach(b=>b.classList.toggle('on', +b.dataset.k===k));
+  reset();
+}
 
 const traceEl = document.getElementById('trace');
 const trackEl = document.getElementById('track');
@@ -507,6 +576,10 @@ function confetti(){
 document.getElementById('hintBtn').addEventListener('click',()=>{ac();hint();});
 document.getElementById('redoBtn').addEventListener('click',reset);
 document.getElementById('againBtn').addEventListener('click',reset);
+document.getElementById('nextBtn').addEventListener('click',()=>{ac();loadMaze((mz+1)%MAZES.length);});
+document.querySelectorAll('.lvbtn').forEach(b=>{
+  b.addEventListener('click',()=>{ ac(); loadMaze(+b.dataset.k); });
+});
 // 最初のタップで音を有効化（モバイル対策）
 document.body.addEventListener('pointerdown',()=>ac(),{once:true});
 
@@ -523,7 +596,7 @@ function fit(){
 }
 window.addEventListener('resize',fit);
 
-render();
+loadMaze(0);
 fit();
 </script>
 </body>
