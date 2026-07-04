@@ -44,7 +44,7 @@ def preview_bar(mazes):
         % (i, i + 1, m['board'], m['score'], m['chain'])
         for i, m in enumerate(mazes))
     return '''
-<div style="position:fixed;left:8px;bottom:8px;z-index:9999;background:rgba(255,255,255,.85);
+<div style="position:fixed;left:8px;bottom:4px;z-index:9999;background:#fff;
   border-radius:8px;padding:6px 8px;font:12px/1.4 sans-serif;box-shadow:0 1px 6px rgba(0,0,0,.25);">
   ⚠️プレビュー版 <select id="pvsel" style="max-width:min(64vw,420px);font-size:12px;">%s</select>
 </div>
@@ -71,6 +71,8 @@ def main():
     html = replace_mazes(html, mazes)
     # tmp/ 配下から img/ 等の相対パスが解決できるように
     html = html.replace('<head>', '<head><base href="../">', 1)
+    # 下端のプレビューバーが盤面のボタンに重ならないよう、その分だけ小さめに縮小
+    html = html.replace('window.innerHeight/bh', '(window.innerHeight-44)/bh', 1)
     html = html.replace('</body>', preview_bar(mazes) + '</body>', 1)
     out = os.path.join(ROOT, 'tmp', 'preview.html')
     os.makedirs(os.path.dirname(out), exist_ok=True)
