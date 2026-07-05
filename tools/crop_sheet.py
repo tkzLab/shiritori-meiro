@@ -18,16 +18,16 @@ from PIL import Image, ImageDraw
 import os
 
 # ===================== CONFIG =====================
-SRC  = "img/REPLACE_ME.png"   # 元のシート画像
+SRC  = "img/sheet3.png"       # 元のシート画像（セット3・2026-07-05）
 OUT  = "img/nodes"            # 出力先
-ROWS = 5                       # 行数
-COLS = 6                       # 各行の個数（全行同じ想定）
+ROWS = 3                       # 行数
+COLS = 3                       # 各行の個数（全行同じ想定）
 PAD  = 6                       # 切り出しの余白(px)
 # 左上→右へ、行ごとに並ぶ順の slug（ROWS*COLS 個。ローマ字推奨）
 WORDS = [
-    # row1
-    "slug1","slug2","slug3","slug4","slug5","slug6",
-    # row2 ...（ROWS 行ぶん）
+    "neko",    "shika",  "ushi",     # ねこ・しか・うし
+    "masuku",  "mogura", "roketto",  # ますく・もぐら・ろけっと
+    "biidama", "wani",   "uchiwa",   # びーだま・わに・うちわ
 ]
 # ==================================================
 

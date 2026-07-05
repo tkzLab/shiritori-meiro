@@ -40,13 +40,13 @@ WORDS_AVAILABLE = {
     'hoshi': 'ほし', 'koala': 'こあら', 'sakura': 'さくら', 'sai': 'さい',
     'tulip': 'ちゅーりっぷ', 'kagami': 'かがみ', 'kemushi': 'けむし',
     'megane': 'めがね',
-}
-# 作成予定（イラスト待ち）。絵ができたら slug を合わせて img/nodes/ に置く
-WORDS_PLANNED = {
-    'neko': 'ねこ', 'shika': 'しか', 'ushi': 'うし', 'mari': 'まり',
+    # セット3（2026-07-05 追加。まり→ますく に変更）
+    'neko': 'ねこ', 'shika': 'しか', 'ushi': 'うし', 'masuku': 'ますく',
     'mogura': 'もぐら', 'roketto': 'ろけっと', 'biidama': 'びーだま',
     'wani': 'わに', 'uchiwa': 'うちわ',
 }
+# 作成予定（イラスト待ち）。絵ができたら slug を合わせて img/nodes/ に置き、上へ移す
+WORDS_PLANNED = {}
 
 # ---------------------------------------------------------------- 盤面
 # index.html の BOARD_A / BOARD_B と一致させること（edges/start/goal）
