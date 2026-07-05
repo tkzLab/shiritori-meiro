@@ -117,11 +117,13 @@
   .levels{display:flex;align-items:center;gap:9px;}
   .lvlabel{font-weight:900;color:#5b3a1e;font-size:19px;letter-spacing:1px;}
   .lvbtn{
-    font-family:inherit;font-weight:900;font-size:24px;width:50px;height:50px;border-radius:50%;
+    font-family:inherit;font-weight:900;font-size:20px;height:50px;padding:0 22px;border-radius:26px;
     border:3px solid #35b5ea;background:#fff;color:#35b5ea;cursor:pointer;
     box-shadow:0 4px 0 rgba(0,0,0,.15);transition:transform .1s,box-shadow .1s;
   }
   .lvbtn.on{background:#35b5ea;color:#fff;}
+  .lvbtn[data-d="hard"]{border-color:#ef7fa8;color:#ef7fa8;}  /* むずかしい＝ピンク盤面の色 */
+  .lvbtn[data-d="hard"].on{background:#ef7fa8;color:#fff;}
   .lvbtn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.15);}
 
   /* しりとりトラック（下部にあつめた ことば）
@@ -201,10 +203,8 @@
       </div>
       <div class="levels">
         <span class="lvlabel">めいろ</span>
-        <button class="lvbtn on" data-k="0">1</button>
-        <button class="lvbtn" data-k="1">2</button>
-        <button class="lvbtn" data-k="2">3</button>
-        <button class="lvbtn" data-k="3">4</button>
+        <button class="lvbtn on" data-d="easy">かんたん</button>
+        <button class="lvbtn" data-d="hard">むずかしい</button>
       </div>
     </div>
 
@@ -274,58 +274,256 @@ let START = BOARD_A.start, GOAL = BOARD_A.goal;
 let adj = [];
 
 /* 迷路データ：labels は位置0..10に置く{絵,ことば}、solution は正解ルート(位置の並び) */
-const MAZES = [
-  { // もんだい1  にわとり→りんご→ごりら→らっぱ→ぱすた→たまご
+const MAZES = [ // ← tools/build_preview.py が生成JSONから自動埋め込み
+  { // わな5 からす→すいか→かさ→さくら→らっぱ
     board:BOARD_A,
-    labels:[
-      {img:'niwatori', word:'にわとり'},  {img:'ryu',      word:'りゅう'},
-      {img:'randoseru',word:'らんどせる'},{img:'pasta',    word:'ぱすた'},
-      {img:'ringo',    word:'りんご'},    {img:'gorira',   word:'ごりら'},
-      {img:'rappa',    word:'らっぱ'},    {img:'risu',     word:'りす'},
-      {img:'suika',    word:'すいか'},    {img:'karasu',   word:'からす'},
-      {img:'tamago',   word:'たまご'},
-    ],
-    solution:[0,4,5,6,3,10],
-  },
-  { // もんだい2  いるか→かがみ→みるく→くつした→たこ→こあら（左下まわりルート）
-    board:BOARD_A,
-    labels:[
-      {img:'iruka',     word:'いるか'},   {img:'kasa',     word:'かさ'},   // 0 / 1 わな(か)
-      {img:'sai',       word:'さい'},     {img:'zou',      word:'ぞう'},   // 2 / 3 ダミー
-      {img:'kagami',    word:'かがみ'},   {img:'koma',     word:'こま'},   // 4 / 5 わな(こ)
-      {img:'sushi',     word:'すし'},     {img:'milk',     word:'みるく'}, // 6 ダミー / 7
-      {img:'kutsushita',word:'くつした'}, {img:'tako',     word:'たこ'},   // 8 / 9
-      {img:'koala',     word:'こあら'},                                    // 10
-    ],
-    solution:[0,4,7,8,9,10],
-  },
-  { // もんだい3  とけい→いるか→かさ→さい→いのしし
-    board:BOARD_A,
-    labels:[
-      {img:'tokei',    word:'とけい'},    {img:'hebi',     word:'へび'},   // 1 ダミー
-      {img:'pan',      word:'ぱん'},      {img:'momo',     word:'もも'},   // 2,3 ダミー
-      {img:'iruka',    word:'いるか'},    {img:'kasa',     word:'かさ'},
-      {img:'sakura',   word:'さくら'},    {img:'kagami',   word:'かがみ'}, // 6 わな(さ) 7 わな(か)
-      {img:'hoshi',    word:'ほし'},      {img:'sai',      word:'さい'},   // 8 ダミー
-      {img:'inoshishi',word:'いのしし'},
-    ],
+    labels:[{img:'karasu',word:'からす'},{img:'sushi',word:'すし'},{img:'saikoro',word:'さいころ'},{img:'risu',word:'りす'},{img:'suika',word:'すいか'},{img:'kasa',word:'かさ'},{img:'sai',word:'さい'},{img:'kagami',word:'かがみ'},{img:'randoseru',word:'らんどせる'},{img:'sakura',word:'さくら'},{img:'rappa',word:'らっぱ'}],
     solution:[0,4,5,9,10],
   },
-  { // もんだい4（16マス・むずかしい）
-    //   にわとり→りす→すいか→かさ→さくら→らっぱ→ぱすた→たまご→ごりら
-    //   ルート: 0-1-5-6-2-3-7-11-15
+  { // わな4 にわとり→りす→すいか→かさ→さくら→らんどせる
+    board:BOARD_A,
+    labels:[{img:'niwatori',word:'にわとり'},{img:'ryu',word:'りゅう'},{img:'kasa',word:'かさ'},{img:'sakura',word:'さくら'},{img:'risu',word:'りす'},{img:'suika',word:'すいか'},{img:'karasu',word:'からす'},{img:'sushi',word:'すし'},{img:'inoshishi',word:'いのしし'},{img:'kagami',word:'かがみ'},{img:'randoseru',word:'らんどせる'}],
+    solution:[0,4,5,2,3,10],
+  },
+  { // わな3 ぞう→うし→しか→かがみ→みるく→くま
+    board:BOARD_A,
+    labels:[{img:'zou',word:'ぞう'},{img:'ushi',word:'うし'},{img:'kagami',word:'かがみ'},{img:'milk',word:'みるく'},{img:'uchiwa',word:'うちわ'},{img:'shika',word:'しか'},{img:'karasu',word:'からす'},{img:'hebi',word:'へび'},{img:'momo',word:'もも'},{img:'kasa',word:'かさ'},{img:'kuma',word:'くま'}],
+    solution:[0,1,5,2,3,10],
+  },
+  { // わな3 しか→かがみ→みるく→くつした→たこ
+    board:BOARD_A,
+    labels:[{img:'shika',word:'しか'},{img:'kagami',word:'かがみ'},{img:'milk',word:'みるく'},{img:'kutsushita',word:'くつした'},{img:'kasa',word:'かさ'},{img:'kuma',word:'くま'},{img:'tamago',word:'たまご'},{img:'hoshi',word:'ほし'},{img:'zou',word:'ぞう'},{img:'fune',word:'ふね'},{img:'tako',word:'たこ'}],
+    solution:[0,1,2,3,10],
+  },
+  { // わな2 いるか→からす→すし→しか→かさ→さい
+    board:BOARD_A,
+    labels:[{img:'iruka',word:'いるか'},{img:'kagami',word:'かがみ'},{img:'tulip',word:'ちゅーりっぷ'},{img:'suika',word:'すいか'},{img:'karasu',word:'からす'},{img:'saikoro',word:'さいころ'},{img:'hebi',word:'へび'},{img:'sushi',word:'すし'},{img:'shika',word:'しか'},{img:'kasa',word:'かさ'},{img:'sai',word:'さい'}],
+    solution:[0,4,7,8,9,10],
+  },
+  { // わな5 からす→すいか→かさ→さい→いるか
+    board:BOARD_A,
+    labels:[{img:'karasu',word:'からす'},{img:'sushi',word:'すし'},{img:'saikoro',word:'さいころ'},{img:'kitsune',word:'きつね'},{img:'suika',word:'すいか'},{img:'kasa',word:'かさ'},{img:'sakura',word:'さくら'},{img:'kagami',word:'かがみ'},{img:'inoshishi',word:'いのしし'},{img:'sai',word:'さい'},{img:'iruka',word:'いるか'}],
+    solution:[0,4,5,9,10],
+  },
+  { // わな4 りす→すいか→かさ→さい→いるか→からす
+    board:BOARD_A,
+    labels:[{img:'risu',word:'りす'},{img:'inoshishi',word:'いのしし'},{img:'sai',word:'さい'},{img:'iruka',word:'いるか'},{img:'suika',word:'すいか'},{img:'kasa',word:'かさ'},{img:'saikoro',word:'さいころ'},{img:'kagami',word:'かがみ'},{img:'kutsushita',word:'くつした'},{img:'sakura',word:'さくら'},{img:'karasu',word:'からす'}],
+    solution:[0,4,5,2,3,10],
+  },
+  { // わな3 りす→すいか→かさ→さいころ→ろけっと→とけい
+    board:BOARD_A,
+    labels:[{img:'risu',word:'りす'},{img:'suika',word:'すいか'},{img:'saikoro',word:'さいころ'},{img:'roketto',word:'ろけっと'},{img:'sushi',word:'すし'},{img:'kasa',word:'かさ'},{img:'sai',word:'さい'},{img:'koala',word:'こあら'},{img:'neko',word:'ねこ'},{img:'sakura',word:'さくら'},{img:'tokei',word:'とけい'}],
+    solution:[0,1,5,2,3,10],
+  },
+  { // わな3 にわとり→りゅう→うし→しか→かさ
+    board:BOARD_A,
+    labels:[{img:'niwatori',word:'にわとり'},{img:'ryu',word:'りゅう'},{img:'ushi',word:'うし'},{img:'shika',word:'しか'},{img:'risu',word:'りす'},{img:'uchiwa',word:'うちわ'},{img:'kagami',word:'かがみ'},{img:'wani',word:'わに'},{img:'fune',word:'ふね'},{img:'rappa',word:'らっぱ'},{img:'kasa',word:'かさ'}],
+    solution:[0,1,2,3,10],
+  },
+  { // わな2 とけい→いのしし→しか→からす→すいか→かさ
+    board:BOARD_A,
+    labels:[{img:'tokei',word:'とけい'},{img:'iruka',word:'いるか'},{img:'saikoro',word:'さいころ'},{img:'gorira',word:'ごりら'},{img:'inoshishi',word:'いのしし'},{img:'kagami',word:'かがみ'},{img:'chou',word:'ちょう'},{img:'shika',word:'しか'},{img:'karasu',word:'からす'},{img:'suika',word:'すいか'},{img:'kasa',word:'かさ'}],
+    solution:[0,4,7,8,9,10],
+  },
+  { // わな4 ほし→しか→かさ→さくら→らっぱ
+    board:BOARD_A,
+    labels:[{img:'hoshi',word:'ほし'},{img:'saikoro',word:'さいころ'},{img:'kitsune',word:'きつね'},{img:'ushi',word:'うし'},{img:'shika',word:'しか'},{img:'kasa',word:'かさ'},{img:'sai',word:'さい'},{img:'kagami',word:'かがみ'},{img:'randoseru',word:'らんどせる'},{img:'sakura',word:'さくら'},{img:'rappa',word:'らっぱ'}],
+    solution:[0,4,5,9,10],
+  },
+  { // わな4 りす→すいか→かさ→さくら→らっぱ→ぱすた
+    board:BOARD_A,
+    labels:[{img:'risu',word:'りす'},{img:'saikoro',word:'さいころ'},{img:'sakura',word:'さくら'},{img:'rappa',word:'らっぱ'},{img:'suika',word:'すいか'},{img:'kasa',word:'かさ'},{img:'pan',word:'ぱん'},{img:'karasu',word:'からす'},{img:'ushi',word:'うし'},{img:'sai',word:'さい'},{img:'pasta',word:'ぱすた'}],
+    solution:[0,4,5,2,3,10],
+  },
+  { // わな3 とけい→いのしし→しか→からす→すし
+    board:BOARD_A,
+    labels:[{img:'tokei',word:'とけい'},{img:'inoshishi',word:'いのしし'},{img:'shika',word:'しか'},{img:'karasu',word:'からす'},{img:'iruka',word:'いるか'},{img:'kagami',word:'かがみ'},{img:'suika',word:'すいか'},{img:'mogura',word:'もぐら'},{img:'zou',word:'ぞう'},{img:'kemushi',word:'けむし'},{img:'sushi',word:'すし'}],
+    solution:[0,1,2,3,10],
+  },
+  { // わな3 ますく→くつした→たこ→こあら→らっぱ→ぱすた
+    board:BOARD_A,
+    labels:[{img:'masuku',word:'ますく'},{img:'kutsushita',word:'くつした'},{img:'koala',word:'こあら'},{img:'rappa',word:'らっぱ'},{img:'kuma',word:'くま'},{img:'tako',word:'たこ'},{img:'pan',word:'ぱん'},{img:'roketto',word:'ろけっと'},{img:'ryu',word:'りゅう'},{img:'koma',word:'こま'},{img:'pasta',word:'ぱすた'}],
+    solution:[0,1,5,2,3,10],
+  },
+  { // わな2 からす→すいか→かさ→さいころ→ろけっと→とけい
+    board:BOARD_A,
+    labels:[{img:'karasu',word:'からす'},{img:'sushi',word:'すし'},{img:'niwatori',word:'にわとり'},{img:'hoshi',word:'ほし'},{img:'suika',word:'すいか'},{img:'kagami',word:'かがみ'},{img:'inoshishi',word:'いのしし'},{img:'kasa',word:'かさ'},{img:'saikoro',word:'さいころ'},{img:'roketto',word:'ろけっと'},{img:'tokei',word:'とけい'}],
+    solution:[0,4,7,8,9,10],
+  },
+  { // わな4 うし→しか→かさ→さい→いのしし
+    board:BOARD_A,
+    labels:[{img:'ushi',word:'うし'},{img:'sakura',word:'さくら'},{img:'saikoro',word:'さいころ'},{img:'randoseru',word:'らんどせる'},{img:'shika',word:'しか'},{img:'kasa',word:'かさ'},{img:'kitsune',word:'きつね'},{img:'karasu',word:'からす'},{img:'iruka',word:'いるか'},{img:'sai',word:'さい'},{img:'inoshishi',word:'いのしし'}],
+    solution:[0,4,5,9,10],
+  },
+  { // わな4 かがみ→みるく→くつした→たこ→こあら→らんどせる
+    board:BOARD_A,
+    labels:[{img:'kagami',word:'かがみ'},{img:'koma',word:'こま'},{img:'tako',word:'たこ'},{img:'koala',word:'こあら'},{img:'milk',word:'みるく'},{img:'kutsushita',word:'くつした'},{img:'rappa',word:'らっぱ'},{img:'kuma',word:'くま'},{img:'gorira',word:'ごりら'},{img:'tamago',word:'たまご'},{img:'randoseru',word:'らんどせる'}],
+    solution:[0,4,5,2,3,10],
+  },
+  { // わな3 かさ→さくら→らっぱ→ぱすた→たまご
+    board:BOARD_A,
+    labels:[{img:'kasa',word:'かさ'},{img:'sakura',word:'さくら'},{img:'rappa',word:'らっぱ'},{img:'pasta',word:'ぱすた'},{img:'sai',word:'さい'},{img:'pan',word:'ぱん'},{img:'tako',word:'たこ'},{img:'hoshi',word:'ほし'},{img:'tulip',word:'ちゅーりっぷ'},{img:'ki',word:'き'},{img:'tamago',word:'たまご'}],
+    solution:[0,1,2,3,10],
+  },
+  { // わな3 りゅう→うし→しか→かさ→さい→いのしし
+    board:BOARD_A,
+    labels:[{img:'ryu',word:'りゅう'},{img:'ushi',word:'うし'},{img:'kasa',word:'かさ'},{img:'sai',word:'さい'},{img:'kagami',word:'かがみ'},{img:'shika',word:'しか'},{img:'iruka',word:'いるか'},{img:'fuusen',word:'ふうせん'},{img:'roketto',word:'ろけっと'},{img:'karasu',word:'からす'},{img:'inoshishi',word:'いのしし'}],
+    solution:[0,1,5,2,3,10],
+  },
+  { // わな2 すいか→かさ→さくら→らっぱ→ぱすた→たこ
+    board:BOARD_A,
+    labels:[{img:'suika',word:'すいか'},{img:'kagami',word:'かがみ'},{img:'randoseru',word:'らんどせる'},{img:'zou',word:'ぞう'},{img:'kasa',word:'かさ'},{img:'tamago',word:'たまご'},{img:'tokei',word:'とけい'},{img:'sakura',word:'さくら'},{img:'rappa',word:'らっぱ'},{img:'pasta',word:'ぱすた'},{img:'tako',word:'たこ'}],
+    solution:[0,4,7,8,9,10],
+  },
+  { // わな4 しか→からす→すいか→かさ→さくら
+    board:BOARD_A,
+    labels:[{img:'shika',word:'しか'},{img:'kagami',word:'かがみ'},{img:'kitsune',word:'きつね'},{img:'kutsushita',word:'くつした'},{img:'karasu',word:'からす'},{img:'suika',word:'すいか'},{img:'tulip',word:'ちゅーりっぷ'},{img:'sushi',word:'すし'},{img:'saikoro',word:'さいころ'},{img:'kasa',word:'かさ'},{img:'sakura',word:'さくら'}],
+    solution:[0,4,5,9,10],
+  },
+  { // わな4 けむし→しか→かさ→さくら→らっぱ→ぱすた
+    board:BOARD_A,
+    labels:[{img:'kemushi',word:'けむし'},{img:'randoseru',word:'らんどせる'},{img:'sakura',word:'さくら'},{img:'rappa',word:'らっぱ'},{img:'shika',word:'しか'},{img:'kasa',word:'かさ'},{img:'pan',word:'ぱん'},{img:'karasu',word:'からす'},{img:'sai',word:'さい'},{img:'saikoro',word:'さいころ'},{img:'pasta',word:'ぱすた'}],
+    solution:[0,4,5,2,3,10],
+  },
+  { // わな4 しか→かさ→さくら→らっぱ→ぱすた
+    board:BOARD_A,
+    labels:[{img:'shika',word:'しか'},{img:'karasu',word:'からす'},{img:'randoseru',word:'らんどせる'},{img:'uchiwa',word:'うちわ'},{img:'kasa',word:'かさ'},{img:'sakura',word:'さくら'},{img:'ushi',word:'うし'},{img:'saikoro',word:'さいころ'},{img:'pan',word:'ぱん'},{img:'rappa',word:'らっぱ'},{img:'pasta',word:'ぱすた'}],
+    solution:[0,4,5,9,10],
+  },
+  { // わな4 にわとり→りす→すいか→かさ→さいころ→ろけっと
+    board:BOARD_A,
+    labels:[{img:'niwatori',word:'にわとり'},{img:'sakura',word:'さくら'},{img:'kasa',word:'かさ'},{img:'saikoro',word:'さいころ'},{img:'risu',word:'りす'},{img:'suika',word:'すいか'},{img:'kagami',word:'かがみ'},{img:'sushi',word:'すし'},{img:'koma',word:'こま'},{img:'karasu',word:'からす'},{img:'roketto',word:'ろけっと'}],
+    solution:[0,4,5,2,3,10],
+  },
+  { // わな3 りす→すいか→かがみ→みるく→くま
+    board:BOARD_A,
+    labels:[{img:'risu',word:'りす'},{img:'suika',word:'すいか'},{img:'kagami',word:'かがみ'},{img:'milk',word:'みるく'},{img:'sushi',word:'すし'},{img:'karasu',word:'からす'},{img:'kutsushita',word:'くつした'},{img:'pan',word:'ぱん'},{img:'kitsune',word:'きつね'},{img:'fuusen',word:'ふうせん'},{img:'kuma',word:'くま'}],
+    solution:[0,1,2,3,10],
+  },
+  { // わな3 さい→いるか→かさ→さくら→らんどせる
+    board:BOARD_A,
+    labels:[{img:'sai',word:'さい'},{img:'iruka',word:'いるか'},{img:'kasa',word:'かさ'},{img:'sakura',word:'さくら'},{img:'inoshishi',word:'いのしし'},{img:'saikoro',word:'さいころ'},{img:'rappa',word:'らっぱ'},{img:'milk',word:'みるく'},{img:'uchiwa',word:'うちわ'},{img:'risu',word:'りす'},{img:'randoseru',word:'らんどせる'}],
+    solution:[0,1,2,3,10],
+  },
+  { // わな3 りゅう→うし→しか→からす→すいか→かがみ
+    board:BOARD_A,
+    labels:[{img:'ryu',word:'りゅう'},{img:'ushi',word:'うし'},{img:'karasu',word:'からす'},{img:'suika',word:'すいか'},{img:'uchiwa',word:'うちわ'},{img:'shika',word:'しか'},{img:'kasa',word:'かさ'},{img:'ki',word:'き'},{img:'tulip',word:'ちゅーりっぷ'},{img:'sai',word:'さい'},{img:'kagami',word:'かがみ'}],
+    solution:[0,1,5,2,3,10],
+  },
+  { // わな3 みるく→くつした→たこ→こあら→らっぱ→ぱすた
+    board:BOARD_A,
+    labels:[{img:'milk',word:'みるく'},{img:'kutsushita',word:'くつした'},{img:'koala',word:'こあら'},{img:'rappa',word:'らっぱ'},{img:'kuma',word:'くま'},{img:'tako',word:'たこ'},{img:'pan',word:'ぱん'},{img:'tulip',word:'ちゅーりっぷ'},{img:'fune',word:'ふね'},{img:'koma',word:'こま'},{img:'pasta',word:'ぱすた'}],
+    solution:[0,1,5,2,3,10],
+  },
+  { // わな2 さい→いるか→かさ→さくら→らっぱ→ぱすた
+    board:BOARD_A,
+    labels:[{img:'sai',word:'さい'},{img:'inoshishi',word:'いのしし'},{img:'kutsushita',word:'くつした'},{img:'hoshi',word:'ほし'},{img:'iruka',word:'いるか'},{img:'kagami',word:'かがみ'},{img:'daikon',word:'だいこん'},{img:'kasa',word:'かさ'},{img:'sakura',word:'さくら'},{img:'rappa',word:'らっぱ'},{img:'pasta',word:'ぱすた'}],
+    solution:[0,4,7,8,9,10],
+  },
+  { // わな2 うし→しか→かさ→さい→いるか→からす
+    board:BOARD_A,
+    labels:[{img:'ushi',word:'うし'},{img:'ryu',word:'りゅう'},{img:'saikoro',word:'さいころ'},{img:'gorira',word:'ごりら'},{img:'shika',word:'しか'},{img:'kagami',word:'かがみ'},{img:'zou',word:'ぞう'},{img:'kasa',word:'かさ'},{img:'sai',word:'さい'},{img:'iruka',word:'いるか'},{img:'karasu',word:'からす'}],
+    solution:[0,4,7,8,9,10],
+  },
+  { // わな6 しか→からす→すいか→かさ→さくら→らっぱ→ぱすた→たこ→こま
     board:BOARD_B,
-    labels:[
-      {img:'niwatori', word:'にわとり'},  {img:'risu',    word:'りす'},     // 0 / 1
-      {img:'sakura',   word:'さくら'},    {img:'rappa',   word:'らっぱ'},   // 2 / 3
-      {img:'daikon',   word:'だいこん'},  {img:'suika',   word:'すいか'},   // 4 わな / 5
-      {img:'kasa',     word:'かさ'},      {img:'pasta',   word:'ぱすた'},   // 6 / 7
-      {img:'pan',      word:'ぱん'},      {img:'fuusen',  word:'ふうせん'}, // 8 わな / 9 わな
-      {img:'kitsune',  word:'きつね'},    {img:'tamago',  word:'たまご'},   // 10 わな / 11
-      {img:'megane',   word:'めがね'},    {img:'hebi',    word:'へび'},     // 12 わな / 13 わな
-      {img:'kuma',     word:'くま'},      {img:'gorira',  word:'ごりら'},   // 14 わな / 15 ゴール
-    ],
-    solution:[0,1,5,6,2,3,7,11,15],
+    labels:[{img:'shika',word:'しか'},{img:'karasu',word:'からす'},{img:'sushi',word:'すし'},{img:'tamago',word:'たまご'},{img:'kagami',word:'かがみ'},{img:'suika',word:'すいか'},{img:'rappa',word:'らっぱ'},{img:'pasta',word:'ぱすた'},{img:'sai',word:'さい'},{img:'kasa',word:'かさ'},{img:'sakura',word:'さくら'},{img:'tako',word:'たこ'},{img:'hoshi',word:'ほし'},{img:'saikoro',word:'さいころ'},{img:'randoseru',word:'らんどせる'},{img:'koma',word:'こま'}],
+    solution:[0,1,5,9,10,6,7,11,15],
+  },
+  { // わな6 ちょう→うし→しか→からす→すいか→かがみ→みるく→くつした→たまご
+    board:BOARD_B,
+    labels:[{img:'chou',word:'ちょう'},{img:'uchiwa',word:'うちわ'},{img:'roketto',word:'ろけっと'},{img:'mogura',word:'もぐら'},{img:'ushi',word:'うし'},{img:'sushi',word:'すし'},{img:'kuma',word:'くま'},{img:'tako',word:'たこ'},{img:'shika',word:'しか'},{img:'karasu',word:'からす'},{img:'milk',word:'みるく'},{img:'kutsushita',word:'くつした'},{img:'kasa',word:'かさ'},{img:'suika',word:'すいか'},{img:'kagami',word:'かがみ'},{img:'tamago',word:'たまご'}],
+    solution:[0,4,8,9,13,14,10,11,15],
+  },
+  { // わな5 すいか→かさ→さい→いのしし→しか→かがみ→みるく→くつした→たこ
+    board:BOARD_B,
+    labels:[{img:'suika',word:'すいか'},{img:'kasa',word:'かさ'},{img:'sakura',word:'さくら'},{img:'pasta',word:'ぱすた'},{img:'karasu',word:'からす'},{img:'sai',word:'さい'},{img:'iruka',word:'いるか'},{img:'mogura',word:'もぐら'},{img:'shika',word:'しか'},{img:'inoshishi',word:'いのしし'},{img:'tamago',word:'たまご'},{img:'hebi',word:'へび'},{img:'kagami',word:'かがみ'},{img:'milk',word:'みるく'},{img:'kutsushita',word:'くつした'},{img:'tako',word:'たこ'}],
+    solution:[0,1,5,9,8,12,13,14,15],
+  },
+  { // わな5 すいか→かさ→さくら→らっぱ→ぱすた→たこ→こま→ますく→くま
+    board:BOARD_B,
+    labels:[{img:'suika',word:'すいか'},{img:'kasa',word:'かさ'},{img:'pan',word:'ぱん'},{img:'tamago',word:'たまご'},{img:'karasu',word:'からす'},{img:'sakura',word:'さくら'},{img:'rappa',word:'らっぱ'},{img:'pasta',word:'ぱすた'},{img:'kemushi',word:'けむし'},{img:'randoseru',word:'らんどせる'},{img:'koma',word:'こま'},{img:'tako',word:'たこ'},{img:'mogura',word:'もぐら'},{img:'kutsushita',word:'くつした'},{img:'masuku',word:'ますく'},{img:'kuma',word:'くま'}],
+    solution:[0,1,5,6,7,11,10,14,15],
+  },
+  { // わな6 ぞう→うちわ→わに→にわとり→りす→すいか→かさ→さいころ→ろけっと
+    board:BOARD_B,
+    labels:[{img:'zou',word:'ぞう'},{img:'uchiwa',word:'うちわ'},{img:'karasu',word:'からす'},{img:'sakura',word:'さくら'},{img:'ushi',word:'うし'},{img:'wani',word:'わに'},{img:'suika',word:'すいか'},{img:'kasa',word:'かさ'},{img:'ryu',word:'りゅう'},{img:'niwatori',word:'にわとり'},{img:'risu',word:'りす'},{img:'saikoro',word:'さいころ'},{img:'sai',word:'さい'},{img:'ringo',word:'りんご'},{img:'sushi',word:'すし'},{img:'roketto',word:'ろけっと'}],
+    solution:[0,1,5,9,10,6,7,11,15],
+  },
+  { // わな5 とけい→いるか→からす→すいか→かがみ→みるく→くつした→たこ→こま
+    board:BOARD_B,
+    labels:[{img:'tokei',word:'とけい'},{img:'inoshishi',word:'いのしし'},{img:'ryu',word:'りゅう'},{img:'mogura',word:'もぐら'},{img:'iruka',word:'いるか'},{img:'kasa',word:'かさ'},{img:'tamago',word:'たまご'},{img:'koala',word:'こあら'},{img:'karasu',word:'からす'},{img:'suika',word:'すいか'},{img:'kutsushita',word:'くつした'},{img:'tako',word:'たこ'},{img:'sushi',word:'すし'},{img:'kagami',word:'かがみ'},{img:'milk',word:'みるく'},{img:'koma',word:'こま'}],
+    solution:[0,4,8,9,13,14,10,11,15],
+  },
+  { // わな5 ちょう→うし→しか→かさ→さい→いるか→かがみ→みるく→くま
+    board:BOARD_B,
+    labels:[{img:'chou',word:'ちょう'},{img:'ushi',word:'うし'},{img:'saikoro',word:'さいころ'},{img:'inoshishi',word:'いのしし'},{img:'uchiwa',word:'うちわ'},{img:'shika',word:'しか'},{img:'kasa',word:'かさ'},{img:'sai',word:'さい'},{img:'risu',word:'りす'},{img:'karasu',word:'からす'},{img:'kagami',word:'かがみ'},{img:'iruka',word:'いるか'},{img:'kitsune',word:'きつね'},{img:'kutsushita',word:'くつした'},{img:'milk',word:'みるく'},{img:'kuma',word:'くま'}],
+    solution:[0,1,5,6,7,11,10,14,15],
+  },
+  { // わな4 かさ→さい→いるか→かがみ→みるく→くつした→たこ→こあら→らっぱ
+    board:BOARD_B,
+    labels:[{img:'kasa',word:'かさ'},{img:'sai',word:'さい'},{img:'inoshishi',word:'いのしし'},{img:'ushi',word:'うし'},{img:'sakura',word:'さくら'},{img:'iruka',word:'いるか'},{img:'karasu',word:'からす'},{img:'mogura',word:'もぐら'},{img:'milk',word:'みるく'},{img:'kagami',word:'かがみ'},{img:'randoseru',word:'らんどせる'},{img:'kuma',word:'くま'},{img:'kutsushita',word:'くつした'},{img:'tako',word:'たこ'},{img:'koala',word:'こあら'},{img:'rappa',word:'らっぱ'}],
+    solution:[0,1,5,9,8,12,13,14,15],
+  },
+  { // わな6 からす→すし→しか→かさ→さくら→らっぱ→ぱすた→たまご→ごりら
+    board:BOARD_B,
+    labels:[{img:'karasu',word:'からす'},{img:'sushi',word:'すし'},{img:'pan',word:'ぱん'},{img:'tako',word:'たこ'},{img:'suika',word:'すいか'},{img:'shika',word:'しか'},{img:'rappa',word:'らっぱ'},{img:'pasta',word:'ぱすた'},{img:'saikoro',word:'さいころ'},{img:'kasa',word:'かさ'},{img:'sakura',word:'さくら'},{img:'tamago',word:'たまご'},{img:'wani',word:'わに'},{img:'sai',word:'さい'},{img:'randoseru',word:'らんどせる'},{img:'gorira',word:'ごりら'}],
+    solution:[0,1,5,9,10,6,7,11,15],
+  },
+  { // わな5 さい→いのしし→しか→かさ→さくら→らっぱ→ぱすた→たこ→こあら
+    board:BOARD_B,
+    labels:[{img:'sai',word:'さい'},{img:'iruka',word:'いるか'},{img:'megane',word:'めがね'},{img:'neko',word:'ねこ'},{img:'inoshishi',word:'いのしし'},{img:'saikoro',word:'さいころ'},{img:'tamago',word:'たまご'},{img:'koma',word:'こま'},{img:'shika',word:'しか'},{img:'kasa',word:'かさ'},{img:'pasta',word:'ぱすた'},{img:'tako',word:'たこ'},{img:'randoseru',word:'らんどせる'},{img:'sakura',word:'さくら'},{img:'rappa',word:'らっぱ'},{img:'koala',word:'こあら'}],
+    solution:[0,4,8,9,13,14,10,11,15],
+  },
+  { // わな5 さい→いのしし→しか→からす→すいか→かさ→さくら→らっぱ→ぱすた
+    board:BOARD_B,
+    labels:[{img:'sai',word:'さい'},{img:'inoshishi',word:'いのしし'},{img:'sushi',word:'すし'},{img:'kagami',word:'かがみ'},{img:'iruka',word:'いるか'},{img:'shika',word:'しか'},{img:'karasu',word:'からす'},{img:'suika',word:'すいか'},{img:'chou',word:'ちょう'},{img:'randoseru',word:'らんどせる'},{img:'sakura',word:'さくら'},{img:'kasa',word:'かさ'},{img:'mogura',word:'もぐら'},{img:'pan',word:'ぱん'},{img:'rappa',word:'らっぱ'},{img:'pasta',word:'ぱすた'}],
+    solution:[0,1,5,6,7,11,10,14,15],
+  },
+  { // わな4 すし→しか→かさ→さくら→らっぱ→ぱすた→たこ→こま→ますく
+    board:BOARD_B,
+    labels:[{img:'sushi',word:'すし'},{img:'shika',word:'しか'},{img:'kagami',word:'かがみ'},{img:'biidama',word:'びーだま'},{img:'pan',word:'ぱん'},{img:'kasa',word:'かさ'},{img:'sai',word:'さい'},{img:'megane',word:'めがね'},{img:'rappa',word:'らっぱ'},{img:'sakura',word:'さくら'},{img:'randoseru',word:'らんどせる'},{img:'hebi',word:'へび'},{img:'pasta',word:'ぱすた'},{img:'tako',word:'たこ'},{img:'koma',word:'こま'},{img:'masuku',word:'ますく'}],
+    solution:[0,1,5,9,8,12,13,14,15],
+  },
+  { // わな6 ちょう→うちわ→わに→にわとり→りす→すいか→かさ→さいころ→ろけっと
+    board:BOARD_B,
+    labels:[{img:'chou',word:'ちょう'},{img:'uchiwa',word:'うちわ'},{img:'karasu',word:'からす'},{img:'sakura',word:'さくら'},{img:'ushi',word:'うし'},{img:'wani',word:'わに'},{img:'suika',word:'すいか'},{img:'kasa',word:'かさ'},{img:'ringo',word:'りんご'},{img:'niwatori',word:'にわとり'},{img:'risu',word:'りす'},{img:'saikoro',word:'さいころ'},{img:'tulip',word:'ちゅーりっぷ'},{img:'ryu',word:'りゅう'},{img:'sushi',word:'すし'},{img:'roketto',word:'ろけっと'}],
+    solution:[0,1,5,9,10,6,7,11,15],
+  },
+  { // わな5 ほし→しか→からす→すいか→かさ→さくら→らっぱ→ぱすた→たまご
+    board:BOARD_B,
+    labels:[{img:'hoshi',word:'ほし'},{img:'shika',word:'しか'},{img:'kagami',word:'かがみ'},{img:'saikoro',word:'さいころ'},{img:'niwatori',word:'にわとり'},{img:'karasu',word:'からす'},{img:'suika',word:'すいか'},{img:'kasa',word:'かさ'},{img:'kutsushita',word:'くつした'},{img:'sushi',word:'すし'},{img:'rappa',word:'らっぱ'},{img:'sakura',word:'さくら'},{img:'koala',word:'こあら'},{img:'tako',word:'たこ'},{img:'pasta',word:'ぱすた'},{img:'tamago',word:'たまご'}],
+    solution:[0,1,5,6,7,11,10,14,15],
+  },
+  { // わな4 ちょう→うし→しか→かさ→さいころ→ろけっと→とけい→いるか→からす
+    board:BOARD_B,
+    labels:[{img:'chou',word:'ちょう'},{img:'uchiwa',word:'うちわ'},{img:'risu',word:'りす'},{img:'hoshi',word:'ほし'},{img:'ushi',word:'うし'},{img:'sai',word:'さい'},{img:'inoshishi',word:'いのしし'},{img:'kagami',word:'かがみ'},{img:'shika',word:'しか'},{img:'kasa',word:'かさ'},{img:'tokei',word:'とけい'},{img:'iruka',word:'いるか'},{img:'koma',word:'こま'},{img:'saikoro',word:'さいころ'},{img:'roketto',word:'ろけっと'},{img:'karasu',word:'からす'}],
+    solution:[0,4,8,9,13,14,10,11,15],
+  },
+  { // わな4 にわとり→りす→すいか→かがみ→みるく→くま→ますく→くつした→たこ
+    board:BOARD_B,
+    labels:[{img:'niwatori',word:'にわとり'},{img:'risu',word:'りす'},{img:'sushi',word:'すし'},{img:'tokei',word:'とけい'},{img:'ryu',word:'りゅう'},{img:'suika',word:'すいか'},{img:'karasu',word:'からす'},{img:'zou',word:'ぞう'},{img:'milk',word:'みるく'},{img:'kagami',word:'かがみ'},{img:'tamago',word:'たまご'},{img:'wani',word:'わに'},{img:'kuma',word:'くま'},{img:'masuku',word:'ますく'},{img:'kutsushita',word:'くつした'},{img:'tako',word:'たこ'}],
+    solution:[0,1,5,9,8,12,13,14,15],
+  },
+  { // わな5 りゅう→うちわ→わに→にわとり→りす→すいか→かさ→さいころ→ろけっと
+    board:BOARD_B,
+    labels:[{img:'ryu',word:'りゅう'},{img:'uchiwa',word:'うちわ'},{img:'karasu',word:'からす'},{img:'sai',word:'さい'},{img:'ushi',word:'うし'},{img:'wani',word:'わに'},{img:'suika',word:'すいか'},{img:'kasa',word:'かさ'},{img:'ringo',word:'りんご'},{img:'niwatori',word:'にわとり'},{img:'risu',word:'りす'},{img:'saikoro',word:'さいころ'},{img:'hebi',word:'へび'},{img:'momo',word:'もも'},{img:'sushi',word:'すし'},{img:'roketto',word:'ろけっと'}],
+    solution:[0,1,5,9,10,6,7,11,15],
+  },
+  { // わな5 からす→すいか→かさ→さくら→らっぱ→ぱすた→たこ→こま→ますく
+    board:BOARD_B,
+    labels:[{img:'karasu',word:'からす'},{img:'suika',word:'すいか'},{img:'tamago',word:'たまご'},{img:'koala',word:'こあら'},{img:'sushi',word:'すし'},{img:'kasa',word:'かさ'},{img:'pasta',word:'ぱすた'},{img:'tako',word:'たこ'},{img:'randoseru',word:'らんどせる'},{img:'sakura',word:'さくら'},{img:'rappa',word:'らっぱ'},{img:'koma',word:'こま'},{img:'neko',word:'ねこ'},{img:'hoshi',word:'ほし'},{img:'pan',word:'ぱん'},{img:'masuku',word:'ますく'}],
+    solution:[0,1,5,9,10,6,7,11,15],
+  },
+  { // わな4 にわとり→りす→すし→しか→かがみ→みるく→くつした→たこ→こあら
+    board:BOARD_B,
+    labels:[{img:'niwatori',word:'にわとり'},{img:'risu',word:'りす'},{img:'kasa',word:'かさ'},{img:'sai',word:'さい'},{img:'ryu',word:'りゅう'},{img:'sushi',word:'すし'},{img:'shika',word:'しか'},{img:'kagami',word:'かがみ'},{img:'megane',word:'めがね'},{img:'tamago',word:'たまご'},{img:'kutsushita',word:'くつした'},{img:'milk',word:'みるく'},{img:'pan',word:'ぱん'},{img:'koma',word:'こま'},{img:'tako',word:'たこ'},{img:'koala',word:'こあら'}],
+    solution:[0,1,5,6,7,11,10,14,15],
+  },
+  { // わな4 りゅう→うちわ→わに→にわとり→りす→すいか→かがみ→みるく→くつした
+    board:BOARD_B,
+    labels:[{img:'ryu',word:'りゅう'},{img:'uchiwa',word:'うちわ'},{img:'ringo',word:'りんご'},{img:'sushi',word:'すし'},{img:'ushi',word:'うし'},{img:'wani',word:'わに'},{img:'niwatori',word:'にわとり'},{img:'risu',word:'りす'},{img:'ki',word:'き'},{img:'tokei',word:'とけい'},{img:'kagami',word:'かがみ'},{img:'suika',word:'すいか'},{img:'koma',word:'こま'},{img:'kuma',word:'くま'},{img:'milk',word:'みるく'},{img:'kutsushita',word:'くつした'}],
+    solution:[0,1,5,6,7,11,10,14,15],
   },
 ];
 
@@ -443,8 +641,7 @@ function loadMaze(k){
     el.querySelector('.word b').textContent = NODES[i].word;
   });
   const badge = document.getElementById('badge');
-  if(badge) badge.textContent = 'もんだい '+(k+1);
-  document.querySelectorAll('.lvbtn').forEach(b=>b.classList.toggle('on', +b.dataset.k===k));
+  if(badge) badge.textContent = 'もんだい '+played;  // 何問目か（この画面を開いてからの通し番号）
   reset();
 }
 
@@ -625,9 +822,32 @@ function confetti(){
 document.getElementById('hintBtn').addEventListener('click',()=>{ac();hint();});
 document.getElementById('redoBtn').addEventListener('click',reset);
 document.getElementById('againBtn').addEventListener('click',reset);
-document.getElementById('nextBtn').addEventListener('click',()=>{ac();loadMaze((mz+1)%MAZES.length);});
+/* =========================================================
+   ランダム出題（かんたん＝盤面A / むずかしい＝盤面B）
+   シャッフルした「袋」から順に出す: 全問出るまで同じ問題は出ず、
+   袋を作り直すときも直前の問題が連続しないようにする
+   ========================================================= */
+const POOLS={easy:[],hard:[]};
+MAZES.forEach((m,i)=>{ (m.board===BOARD_A?POOLS.easy:POOLS.hard).push(i); });
+let diff='easy', bag=[], played=0;
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function nextMaze(){
+  if(!bag.length){
+    bag=shuffle(POOLS[diff].slice());
+    if(bag.length>1 && bag[bag.length-1]===mz) bag.unshift(bag.pop());
+  }
+  played++;
+  loadMaze(bag.pop());
+}
+function setDiff(d){
+  diff=d; bag=[];
+  document.querySelectorAll('.lvbtn').forEach(b=>b.classList.toggle('on', b.dataset.d===d));
+  nextMaze();
+}
+
+document.getElementById('nextBtn').addEventListener('click',()=>{ac();nextMaze();});
 document.querySelectorAll('.lvbtn').forEach(b=>{
-  b.addEventListener('click',()=>{ ac(); loadMaze(+b.dataset.k); });
+  b.addEventListener('click',()=>{ ac(); setDiff(b.dataset.d); });
 });
 // 最初のタップで音を有効化（モバイル対策）
 document.body.addEventListener('pointerdown',()=>ac(),{once:true});
@@ -648,7 +868,7 @@ function fit(){
 window.addEventListener('resize',fit);
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(fit); // Webフォント適用後に高さが確定
 
-loadMaze(0);
+setDiff('easy');
 fit();
 </script>
 </body>
