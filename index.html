@@ -570,13 +570,38 @@ const sndGood = ()=>{ beep(660,0,.12,'triangle'); beep(880,.1,.15,'triangle'); }
 const sndBad  = ()=>{ beep(200,0,.18,'sawtooth',.18); beep(150,.12,.22,'sawtooth',.18); };
 const sndWin  = ()=>{ [523,659,784,1046].forEach((f,i)=>beep(f,i*0.13,.3,'triangle',.28)); };
 
+// 日本語の音声を明示的に選ぶ（iOSは lang 指定だけだと鳴らないことがある。
+// 音声一覧は非同期に届くことがあるので voiceschanged でも拾う）
+let jaVoice=null;
+function pickJaVoice(){
+  try{
+    const vs=speechSynthesis.getVoices();
+    jaVoice=vs.find(v=>v.lang&&v.lang.replace('_','-').startsWith('ja'))||null;
+  }catch(e){}
+}
+if('speechSynthesis' in window){
+  pickJaVoice();
+  speechSynthesis.addEventListener('voiceschanged',pickJaVoice);
+}
+
+let speakSeq=0;
 function speak(word){
   if(!('speechSynthesis' in window)) return;
   try{
-    speechSynthesis.cancel();
+    if(speechSynthesis.speaking||speechSynthesis.pending) speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(word);
     u.lang='ja-JP'; u.rate=0.85; u.pitch=1.25;
-    speechSynthesis.speak(u);
+    if(jaVoice) u.voice=jaVoice;
+    // iOSは cancel() 直後の同期 speak() が飲み込まれるため少し遅らせる。
+    // 連続でなぞったときは最新の1語だけ発話する（seqで古い予約を破棄）
+    const id=++speakSeq;
+    setTimeout(()=>{
+      if(id!==speakSeq) return;
+      try{
+        if(speechSynthesis.paused) speechSynthesis.resume(); // 中断後 paused のまま黙る癖への保険
+        speechSynthesis.speak(u);
+      }catch(e){}
+    },60);
   }catch(e){}
 }
 
