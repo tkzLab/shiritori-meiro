@@ -546,8 +546,16 @@ function shiritoriOK(prevWord, nextWord){
 /* =========================================================
    おと（WebAudio）＆ よみあげ
    ========================================================= */
+// iOS: 本体が消音モードでも WebAudio が鳴るよう「メディア再生」扱いにする（iOS 16.4+）
+try{ if(navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
+
 let actx;
-function ac(){ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); return actx; }
+function ac(){
+  actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+  // iOSは生成直後や中断（画面ロック・タブ切替）後に suspended になるので、毎回復帰を試みる
+  if(actx.state !== 'running') actx.resume();
+  return actx;
+}
 function beep(freq, t0, dur, type='sine', vol=0.25){
   const c=ac(), o=c.createOscillator(), g=c.createGain();
   o.type=type; o.frequency.value=freq;
@@ -849,8 +857,16 @@ document.getElementById('nextBtn').addEventListener('click',()=>{ac();nextMaze()
 document.querySelectorAll('.lvbtn').forEach(b=>{
   b.addEventListener('click',()=>{ ac(); setDiff(b.dataset.d); });
 });
-// 最初のタップで音を有効化（モバイル対策）
-document.body.addEventListener('pointerdown',()=>ac(),{once:true});
+// タップのたびに音の復帰を試みる（iOSは中断後 suspended に戻るため once にしない）。
+// よみあげは「ユーザー操作内での初回 speak」が必要なことがあるので、無音の発話で一度だけ解錠する
+let speechUnlocked=false;
+document.body.addEventListener('pointerdown',()=>{
+  ac();
+  if(!speechUnlocked && 'speechSynthesis' in window){
+    speechUnlocked=true;
+    try{ const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); }catch(e){}
+  }
+});
 
 /* =========================================================
    画面の縦・横 両方に収まるようにスケール
