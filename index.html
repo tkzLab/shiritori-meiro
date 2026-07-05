@@ -883,10 +883,20 @@ document.querySelectorAll('.lvbtn').forEach(b=>{
   b.addEventListener('click',()=>{ ac(); setDiff(b.dataset.d); });
 });
 // タップのたびに音の復帰を試みる（iOSは中断後 suspended に戻るため once にしない）。
-// よみあげは「ユーザー操作内での初回 speak」が必要なことがあるので、無音の発話で一度だけ解錠する
-let speechUnlocked=false;
+// iOSは「最初の再生」がタップハンドラ内で始まらないと捨てられるので、
+// 初回タップで無音バッファを1つ即時再生して出力経路を確立する（1音目が鳴らない対策）。
+// よみあげも同様に、無音の発話で一度だけ解錠する
+let audioWarmed=false, speechUnlocked=false;
 document.body.addEventListener('pointerdown',()=>{
-  ac();
+  const c=ac();
+  if(!audioWarmed){
+    audioWarmed=true;
+    try{
+      const s=c.createBufferSource();
+      s.buffer=c.createBuffer(1,1,22050);
+      s.connect(c.destination); s.start(0);
+    }catch(e){}
+  }
   if(!speechUnlocked && 'speechSynthesis' in window){
     speechUnlocked=true;
     try{ const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); }catch(e){}
